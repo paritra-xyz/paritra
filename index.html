@@ -268,7 +268,7 @@ footer{border-top:1px solid var(--line)}
         </table>
       </div>
       <div class="board-foot">
-        <span id="board-status" class="note">Loading live data…</span>
+        <span><span id="board-status" class="note">Loading live data…</span><br><span id="fair-status" class="note">Fair value: loading…</span></span>
         <button type="button" class="refresh" id="board-refresh">Refresh</button>
       </div>
       <p class="note" style="margin-top:10px"><b>DEX price</b>: what the token trades for on Robinhood Chain, via <a href="https://www.geckoterminal.com/robinhood/pools" target="_blank" rel="noopener">GeckoTerminal</a>. <b>Fair value</b>: the official <a href="https://docs.chain.link/data-feeds/tokenized-equity-feeds/robinhood" target="_blank" rel="noopener">Chainlink</a> price for one token (stock price × token multiplier), read on-chain. It updates 24/5 and holds its last value when the stock market is shut. <b>Premium</b> = DEX price vs. fair value. Refreshed every minute. Data, not financial advice.</p>
@@ -431,7 +431,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="x" href="#">X</a>
       <a data-link="tg" href="#">Telegram</a>
     </nav>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice.</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.2</p>
   </div>
 </footer>
 
@@ -601,12 +601,15 @@ const TAX = "";           // example: "0% / 0%"
       .then(function () { loading = false; });
   }
   /* ===== Fair value from Chainlink (read on-chain) ===== */
-  var RPC = 'https://rpc.mainnet.chain.robinhood.com';
+  /* Several public endpoints, tried in order; the first that answers is remembered. */
+  var RPCS = ['https://rpc.mainnet.chain.robinhood.com', 'https://robinhoodchain.blockscout.com/api/eth-rpc'];
+  var rpcIdx = 0, rpcUsed = '';
   var DIRECTORY = 'https://reference-data-directory.vercel.app/feeds-robinhood-mainnet.json';
   /* Backup feed list, used only if the Chainlink directory can't be reached.
      Every feed is checked on-chain (its description must name the right ticker) before use. */
   var BACKUP_FEEDS = {
     TSLA: '0x4A1166a659A55625345e9515b32adECea5547C38',
+    NVDA: '0x379EC4f7C378F34a1B47E4F3cbeBCbAC3E8E9F15',
     AAPL: '0x6B22A786bAa607d76728168703a39Ea9C99f2cD0',
     GOOGL: '0xF6f373a037c30F0e5010d854385cA89185AE638b'
   };
@@ -618,11 +621,23 @@ const TAX = "";           // example: "0% / 0%"
     var next = u.charAt(sym.length);
     return next === '' || !/[A-Z]/.test(next);
   }
+  function rpcOne(url, to, data) {
+    return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: to, data: data }, 'latest'] }) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) { if (!j || typeof j.result !== 'string') throw new Error('bad'); return j.result; });
+  }
+  /* find a working endpoint with the first call, then run all calls on it */
   function rpcBatch(calls) {
-    var body = calls.map(function (c, i) { return { jsonrpc: '2.0', id: i, method: 'eth_call', params: [{ to: c.to, data: c.data }, 'latest'] }; });
-    return fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
-      .then(function (r) { if (!r.ok) throw new Error('RPC ' + r.status); return r.json(); })
-      .then(function (res) { var out = []; (Array.isArray(res) ? res : [res]).forEach(function (x) { out[x.id] = x.result; }); return out; });
+    if (!calls.length) return Promise.resolve([]);
+    function tryFrom(i) {
+      if (i >= RPCS.length) return Promise.reject(new Error('no rpc'));
+      return rpcOne(RPCS[i], calls[0].to, calls[0].data).then(function (first) {
+        rpcIdx = i; rpcUsed = RPCS[i].indexOf('blockscout') > -1 ? 'Blockscout' : 'Robinhood RPC';
+        return Promise.all(calls.slice(1).map(function (c) { return rpcOne(RPCS[i], c.to, c.data).catch(function () { return null; }); }))
+          .then(function (rest) { return [first].concat(rest); });
+      }, function () { return tryFrom(i + 1); });
+    }
+    return tryFrom(rpcIdx);
   }
   function word(hex, i) { return hex.slice(2 + i * 64, 2 + (i + 1) * 64); }
   function decodeString(hex) {
@@ -688,6 +703,7 @@ const TAX = "";           // example: "0% / 0%"
     c.prem.textContent = (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(2) + '%';
   }
 
+  var fairStatus = document.getElementById('fair-status');
   function loadFair() {
     var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { feeds = f; return f; });
     return ready.then(function (f) {
@@ -695,7 +711,7 @@ const TAX = "";           // example: "0% / 0%"
       Object.keys(cells).forEach(function (k) {
         if (!f[k]) { var c = cells[k]; c.fairDone = true; c.fair.innerHTML = '<span class="soon">No feed yet</span>'; if (c.prem.textContent === '…') c.prem.textContent = '—'; }
       });
-      if (!keys.length) return;
+      if (!keys.length) { fairStatus.textContent = 'Fair value: no verified feeds found yet.'; return; }
       return rpcBatch(keys.map(function (k) { return { to: f[k].addr, data: '0xfeaf968c' }; })).then(function (res) {
         keys.forEach(function (k, i) {
           var c = cells[k], hex = res[i];
@@ -710,8 +726,10 @@ const TAX = "";           // example: "0% / 0%"
           c.fair.appendChild(ago);
           updatePremium(c);
         });
+        fairStatus.textContent = 'Fair value: ' + keys.length + ' Chainlink feeds via ' + rpcUsed;
       });
-    }).catch(function () {
+    }).catch(function (e) {
+      fairStatus.textContent = 'Fair value unavailable right now (' + (e && e.message ? e.message : 'network') + ').';
       Object.keys(cells).forEach(function (k) { var c = cells[k]; c.fairDone = true; if (c.fair.textContent === '…') c.fair.textContent = '—'; if (c.prem.textContent === '…') c.prem.textContent = '—'; });
     });
   }
