@@ -254,7 +254,7 @@ footer{border-top:1px solid var(--line)}
     <div class="sec-head">
       <span class="kicker">Parity board</span>
       <h2>Every stock token, one table.</h2>
-      <p>Live data for verified Robinhood stock tokens only. Premium vs. the real stock price is coming next.</p>
+      <p>Live data for verified Robinhood stock tokens only: the DEX price, the official fair value, and the premium or discount between them.</p>
     </div>
     <div class="board">
       <div class="board-top">
@@ -263,7 +263,7 @@ footer{border-top:1px solid var(--line)}
       </div>
       <div class="scroll">
         <table>
-          <thead><tr><th scope="col">Token</th><th scope="col">Token price</th><th scope="col">24h</th><th scope="col">Liquidity</th><th scope="col">Volume 24h</th><th scope="col">Premium</th></tr></thead>
+          <thead><tr><th scope="col">Token</th><th scope="col">DEX price</th><th scope="col">Fair value</th><th scope="col">Premium</th><th scope="col">24h</th><th scope="col">Liquidity</th><th scope="col">Volume 24h</th></tr></thead>
           <tbody id="board-rows"></tbody>
         </table>
       </div>
@@ -271,7 +271,7 @@ footer{border-top:1px solid var(--line)}
         <span id="board-status" class="note">Loading live data…</span>
         <button type="button" class="refresh" id="board-refresh">Refresh</button>
       </div>
-      <p class="note" style="margin-top:10px">Token data via <a href="https://www.geckoterminal.com/robinhood/pools" target="_blank" rel="noopener">GeckoTerminal</a>, refreshed every minute. Premium needs the real stock price and goes live in the next update. Data, not financial advice.</p>
+      <p class="note" style="margin-top:10px"><b>DEX price</b>: what the token trades for on Robinhood Chain, via <a href="https://www.geckoterminal.com/robinhood/pools" target="_blank" rel="noopener">GeckoTerminal</a>. <b>Fair value</b>: the official <a href="https://docs.chain.link/data-feeds/tokenized-equity-feeds/robinhood" target="_blank" rel="noopener">Chainlink</a> price for one token (stock price × token multiplier), read on-chain. It updates 24/5 and holds its last value when the stock market is shut. <b>Premium</b> = DEX price vs. fair value. Refreshed every minute. Data, not financial advice.</p>
     </div>
   </div>
 </section>
@@ -367,8 +367,8 @@ footer{border-top:1px solid var(--line)}
       <h2>Where Paritra is headed</h2>
     </div>
     <div class="road">
-      <div class="phase now"><span class="st">Now</span><h3>Phase 1 · Board beta</h3><ul><li>Website live at paritra.xyz</li><li>Live token price, liquidity and volume</li><li>Verified contracts only</li></ul></div>
-      <div class="phase"><span class="st">Next</span><h3>Phase 2 · Premium</h3><ul><li>Real stock price per token</li><li>Live premium and discount</li><li>More verified stock tokens</li></ul></div>
+      <div class="phase now"><span class="st">Now</span><h3>Phase 1 · Board beta</h3><ul><li>Website live at paritra.xyz</li><li>Live DEX price vs. Chainlink fair value</li><li>Verified contracts only</li></ul></div>
+      <div class="phase"><span class="st">Next</span><h3>Phase 2 · Deeper data</h3><ul><li>Mobile card view</li><li>Premium history charts</li><li>More verified stock tokens</li></ul></div>
       <div class="phase"><span class="st">Later</span><h3>Phase 3 · Alerts</h3><ul><li>Spread alerts on X and Telegram</li><li>Personal watchlists</li><li>Public API</li></ul></div>
     </div>
   </div>
@@ -383,7 +383,7 @@ footer{border-top:1px solid var(--line)}
     <div class="acc">
       <details open><summary>Premium and discount</summary><div><p>Paritra compares a token’s price with its stock’s price and shows the difference in percent.</p><p><code>(token − stock) ÷ stock × 100</code></p><p>Positive means the token trades above the stock (premium). Negative means below (discount).</p></div></details>
       <details><summary>Market status</summary><div><p><b>Open</b>: the stock price is live during regular US market hours.</p><p><b>Closed</b>: nights, weekends and holidays. The stock price is the last official close, so the gap shows how far the token has moved since then.</p></div></details>
-      <details><summary>Data sources</summary><div><p>Token prices, liquidity and trades come from public pool data on Robinhood Chain. Stock prices come from a market data provider. Every number on the board shows its source and update time.</p></div></details>
+      <details><summary>Data sources</summary><div><p>DEX prices, liquidity and volume come from public pool data on Robinhood Chain via GeckoTerminal. Fair value comes from the official Chainlink price feed for each Robinhood stock token, read directly on-chain. Each feed is checked on-chain before it is used.</p></div></details>
       <details><summary>Limits</summary><div><p>Shallow pools can show large, short-lived gaps. Prices can lag by up to a minute. Paritra shows data; it doesn’t tell you what to trade.</p></div></details>
     </div>
   </section>
@@ -530,8 +530,8 @@ const TAX = "";           // example: "0% / 0%"
     var co = document.createElement('span'); co.className = 'co'; co.textContent = t[1]; td0.appendChild(co);
     tr.appendChild(td0);
     var c = {};
-    ['price', 'chg', 'liq', 'vol'].forEach(function (k) { var td = document.createElement('td'); td.textContent = '…'; tr.appendChild(td); c[k] = td; });
-    var tdp = document.createElement('td'); tdp.innerHTML = '<span class="soon">Soon</span>'; tr.appendChild(tdp);
+    ['price', 'fair', 'prem', 'chg', 'liq', 'vol'].forEach(function (k) { var td = document.createElement('td'); td.textContent = '…'; tr.appendChild(td); c[k] = td; });
+    c.sym = t[0]; c.dex = NaN; c.fv = NaN;
     rows.appendChild(tr);
     cells[t[2].toLowerCase()] = c;
   });
@@ -577,7 +577,7 @@ const TAX = "";           // example: "0% / 0%"
           var a = tok.attributes || {}, key = String(a.address || '').toLowerCase(), c = cells[key];
           if (!c) return;
           seen[key] = true;
-          c.price.textContent = fmtPrice(parseFloat(a.price_usd));
+          c.dex = parseFloat(a.price_usd); c.price.textContent = fmtPrice(c.dex); updatePremium(c);
           c.liq.textContent = fmtBig(parseFloat(a.total_reserve_in_usd));
           c.vol.textContent = fmtBig(parseFloat(a.volume_usd && a.volume_usd.h24));
           var rel = tok.relationships && tok.relationships.top_pools && tok.relationships.top_pools.data;
@@ -600,9 +600,126 @@ const TAX = "";           // example: "0% / 0%"
       })
       .then(function () { loading = false; });
   }
-  load();
-  setInterval(function () { if (!document.hidden) load(); }, 60000);
-  document.getElementById('board-refresh').addEventListener('click', load);
+  /* ===== Fair value from Chainlink (read on-chain) ===== */
+  var RPC = 'https://rpc.mainnet.chain.robinhood.com';
+  var DIRECTORY = 'https://reference-data-directory.vercel.app/feeds-robinhood-mainnet.json';
+  /* Backup feed list, used only if the Chainlink directory can't be reached.
+     Every feed is checked on-chain (its description must name the right ticker) before use. */
+  var BACKUP_FEEDS = {
+    TSLA: '0x4A1166a659A55625345e9515b32adECea5547C38',
+    AAPL: '0x6B22A786bAa607d76728168703a39Ea9C99f2cD0',
+    GOOGL: '0xF6f373a037c30F0e5010d854385cA89185AE638b'
+  };
+  var feeds = null; /* key (token address lowercase) -> { addr, dec } */
+
+  function tickerMatches(text, sym) {
+    var u = String(text || '').toUpperCase().trim();
+    if (u.indexOf(sym) !== 0) return false;
+    var next = u.charAt(sym.length);
+    return next === '' || !/[A-Z]/.test(next);
+  }
+  function rpcBatch(calls) {
+    var body = calls.map(function (c, i) { return { jsonrpc: '2.0', id: i, method: 'eth_call', params: [{ to: c.to, data: c.data }, 'latest'] }; });
+    return fetch(RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { if (!r.ok) throw new Error('RPC ' + r.status); return r.json(); })
+      .then(function (res) { var out = []; (Array.isArray(res) ? res : [res]).forEach(function (x) { out[x.id] = x.result; }); return out; });
+  }
+  function word(hex, i) { return hex.slice(2 + i * 64, 2 + (i + 1) * 64); }
+  function decodeString(hex) {
+    try {
+      var len = parseInt(word(hex, 1), 16), data = hex.slice(2 + 128, 2 + 128 + len * 2), str = '';
+      for (var i = 0; i < data.length; i += 2) str += String.fromCharCode(parseInt(data.substr(i, 2), 16));
+      return str;
+    } catch (e) { return ''; }
+  }
+
+  function findFeeds() {
+    var candidates = {}; /* sym -> {addr, dec} */
+    return fetch(DIRECTORY).then(function (r) { if (!r.ok) throw new Error('dir'); return r.json(); })
+      .then(function (list) {
+        (Array.isArray(list) ? list : []).forEach(function (f) {
+          var name = String(f.name || ''), base = name.split('/')[0];
+          var addr = f.proxyAddress || f.contractAddress;
+          if (!addr || name.indexOf('/') < 0 || !/USD/.test(name.split('/')[1] || '')) return;
+          TOKENS.forEach(function (t) {
+            if (!tickerMatches(base, t[0])) return;
+            var tokenized = /robinhood|tokeni[sz]ed/i.test(JSON.stringify(f));
+            var prev = candidates[t[0]];
+            if (!prev || (tokenized && !prev.tokenized)) candidates[t[0]] = { addr: addr, dec: f.decimals != null ? +f.decimals : 8, tokenized: tokenized };
+          });
+        });
+        if (!Object.keys(candidates).length) throw new Error('empty');
+        return candidates;
+      })
+      .catch(function () {
+        var c = {}; Object.keys(BACKUP_FEEDS).forEach(function (k) { c[k] = { addr: BACKUP_FEEDS[k], dec: 8 }; }); return c;
+      })
+      .then(function (cand) {
+        /* verify each feed on-chain: description() must name the ticker */
+        var syms = Object.keys(cand);
+        return rpcBatch(syms.map(function (k) { return { to: cand[k].addr, data: '0x7284e416' }; })).then(function (res) {
+          var ok = {};
+          syms.forEach(function (k, i) {
+            if (res[i] && tickerMatches(decodeString(res[i]), k)) {
+              var tok = TOKENS.filter(function (t) { return t[0] === k; })[0];
+              ok[tok[2].toLowerCase()] = cand[k];
+            }
+          });
+          return ok;
+        });
+      });
+  }
+
+  function timeAgo(sec) {
+    var d = Date.now() / 1000 - sec;
+    if (d < 90) return 'just now';
+    if (d < 3600) return Math.round(d / 60) + 'm ago';
+    if (d < 86400) return Math.round(d / 3600) + 'h ago';
+    return Math.round(d / 86400) + 'd ago';
+  }
+
+  function updatePremium(c) {
+    if (isNaN(c.dex) || isNaN(c.fv) || c.fv <= 0) {
+      if (c.prem.textContent === '…' && c.fairDone) c.prem.textContent = '—';
+      return;
+    }
+    var p = (c.dex - c.fv) / c.fv * 100;
+    c.prem.className = Math.abs(p) < 0.05 ? '' : (p > 0 ? 'up' : 'down');
+    c.prem.textContent = (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(2) + '%';
+  }
+
+  function loadFair() {
+    var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { feeds = f; return f; });
+    return ready.then(function (f) {
+      var keys = Object.keys(f);
+      Object.keys(cells).forEach(function (k) {
+        if (!f[k]) { var c = cells[k]; c.fairDone = true; c.fair.innerHTML = '<span class="soon">No feed yet</span>'; if (c.prem.textContent === '…') c.prem.textContent = '—'; }
+      });
+      if (!keys.length) return;
+      return rpcBatch(keys.map(function (k) { return { to: f[k].addr, data: '0xfeaf968c' }; })).then(function (res) {
+        keys.forEach(function (k, i) {
+          var c = cells[k], hex = res[i];
+          c.fairDone = true;
+          if (!hex || hex.length < 2 + 64 * 5) { c.fair.textContent = '—'; updatePremium(c); return; }
+          var ans = BigInt('0x' + word(hex, 1)), upd = parseInt(word(hex, 3), 16);
+          if (ans <= 0n) { c.fair.textContent = '—'; return; }
+          c.fv = Number(ans) / Math.pow(10, f[k].dec);
+          c.fair.innerHTML = '';
+          c.fair.appendChild(document.createTextNode(fmtPrice(c.fv)));
+          var ago = document.createElement('span'); ago.className = 'co'; ago.textContent = 'updated ' + timeAgo(upd);
+          c.fair.appendChild(ago);
+          updatePremium(c);
+        });
+      });
+    }).catch(function () {
+      Object.keys(cells).forEach(function (k) { var c = cells[k]; c.fairDone = true; if (c.fair.textContent === '…') c.fair.textContent = '—'; if (c.prem.textContent === '…') c.prem.textContent = '—'; });
+    });
+  }
+
+  function loadAll() { load(); loadFair(); }
+  loadAll();
+  setInterval(function () { if (!document.hidden) loadAll(); }, 60000);
+  document.getElementById('board-refresh').addEventListener('click', loadAll);
 
   /* explainer chart: sample data, 48 hours */
   var seed = 7;
