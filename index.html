@@ -105,6 +105,23 @@ td:first-child{font-family:var(--sans);font-weight:600;color:var(--text)}
 td .co{display:block;font-weight:400;font-size:13px;color:var(--faint)}
 .status{display:inline-flex;align-items:center;gap:6px;font-size:13px}
 
+/* live board */
+.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#5A6B65;margin-right:9px;vertical-align:middle}
+.live-dot.on{background:var(--mint);box-shadow:0 0 0 4px rgba(62,230,168,.18)}
+.board-top h3{display:flex;align-items:center}
+.mkt{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.mkt b{font-weight:500}
+.board-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
+.refresh{font:inherit;font-size:14px;font-weight:500;color:var(--text);background:none;border:1px solid #33403B;border-radius:10px;padding:8px 14px;min-height:40px;cursor:pointer}
+.refresh:hover{border-color:var(--mint)}
+.up{color:var(--mint)!important}
+.down{color:#FF8A7A!important}
+.vbadge{display:inline-block;margin-left:6px;font-family:var(--mono);font-size:10px;font-weight:500;color:var(--mint);border:1px solid rgba(62,230,168,.4);border-radius:999px;padding:1px 6px;vertical-align:middle}
+.soon{font-size:12px;color:var(--faint)}
+.tok button{all:unset;cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:6px;word-break:break-all}
+.tok button:hover{color:var(--mint)}
+.tok button:focus-visible{outline:2px solid var(--mint);outline-offset:2px;border-radius:4px}
+
 /* tokens grid */
 .tokens{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
 .tok{border:1px solid var(--line2);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:2px}
@@ -190,7 +207,7 @@ footer{border-top:1px solid var(--line)}
     </button>
     <nav class="links" id="links" aria-label="Main">
       <a href="#board">Parity board</a>
-      <a href="#tokens">Tokens</a>
+      <a href="#tokens">Verified</a>
       <a href="#how">How it works</a>
       <a href="#token">Token</a>
       <a href="#roadmap">Roadmap</a>
@@ -237,20 +254,24 @@ footer{border-top:1px solid var(--line)}
     <div class="sec-head">
       <span class="kicker">Parity board</span>
       <h2>Every stock token, one table.</h2>
-      <p>Live prices arrive with the beta. This is how the board will look.</p>
+      <p>Live data for verified Robinhood stock tokens only. Premium vs. the real stock price is coming next.</p>
     </div>
     <div class="board">
       <div class="board-top">
-        <h3>Premium / discount</h3>
-        <span class="note" style="font-family:var(--mono)">Preview · live data at beta</span>
+        <h3><span class="live-dot" id="live-dot"></span>Live on Robinhood Chain</h3>
+        <span class="mkt" id="mkt-status">US market: —</span>
       </div>
       <div class="scroll">
         <table>
-          <thead><tr><th scope="col">Token</th><th scope="col">Token price</th><th scope="col">Stock price</th><th scope="col">Premium</th><th scope="col">Pool liquidity</th><th scope="col">Market</th></tr></thead>
+          <thead><tr><th scope="col">Token</th><th scope="col">Token price</th><th scope="col">24h</th><th scope="col">Liquidity</th><th scope="col">Volume 24h</th><th scope="col">Premium</th></tr></thead>
           <tbody id="board-rows"></tbody>
         </table>
       </div>
-      <p class="note" style="margin-top:14px">Premium = token price vs. real stock price. Above zero is a premium, below zero a discount. When the market is closed, the stock price is its last close.</p>
+      <div class="board-foot">
+        <span id="board-status" class="note">Loading live data…</span>
+        <button type="button" class="refresh" id="board-refresh">Refresh</button>
+      </div>
+      <p class="note" style="margin-top:10px">Token data via <a href="https://www.geckoterminal.com/robinhood/pools" target="_blank" rel="noopener">GeckoTerminal</a>, refreshed every minute. Premium needs the real stock price and goes live in the next update. Data, not financial advice.</p>
     </div>
   </div>
 </section>
@@ -258,9 +279,9 @@ footer{border-top:1px solid var(--line)}
 <section id="tokens">
   <div class="wrap sec">
     <div class="sec-head">
-      <span class="kicker">Watchlist at launch</span>
-      <h2>The names people trade after hours.</h2>
-      <p>Planned first list. Each name goes live on the board once its token has an active pool on Robinhood Chain.</p>
+      <span class="kicker">Verified contracts</span>
+      <h2>Only the real stock tokens.</h2>
+      <p>Anyone can launch a token called TSLA on Robinhood Chain. Paritra only reads the official Robinhood stock token contracts below. Tap an address to copy it.</p>
     </div>
     <div class="tokens" id="token-list"></div>
   </div>
@@ -346,8 +367,8 @@ footer{border-top:1px solid var(--line)}
       <h2>Where Paritra is headed</h2>
     </div>
     <div class="road">
-      <div class="phase now"><span class="st">Now</span><h3>Phase 1 · Launch</h3><ul><li>Website and docs</li><li>X and Telegram community</li><li>First watchlist of stock tokens</li></ul></div>
-      <div class="phase"><span class="st">Next</span><h3>Phase 2 · Board beta</h3><ul><li>Live premium and discount</li><li>Market status per token</li><li>Pool liquidity and volume</li></ul></div>
+      <div class="phase now"><span class="st">Now</span><h3>Phase 1 · Board beta</h3><ul><li>Website live at paritra.xyz</li><li>Live token price, liquidity and volume</li><li>Verified contracts only</li></ul></div>
+      <div class="phase"><span class="st">Next</span><h3>Phase 2 · Premium</h3><ul><li>Real stock price per token</li><li>Live premium and discount</li><li>More verified stock tokens</li></ul></div>
       <div class="phase"><span class="st">Later</span><h3>Phase 3 · Alerts</h3><ul><li>Spread alerts on X and Telegram</li><li>Personal watchlists</li><li>Public API</li></ul></div>
     </div>
   </div>
@@ -375,6 +396,7 @@ footer{border-top:1px solid var(--line)}
     <div class="acc">
       <details><summary>What is a stock token?</summary><div><p>A token on Robinhood Chain that follows a real stock, like TSLA or NVDA, and can trade 24/7.</p></div></details>
       <details><summary>Why do the prices differ?</summary><div><p>When the stock market is closed, news still moves the token while the stock waits for the next open. Thin liquidity can widen the gap too.</p></div></details>
+      <details><summary>Why only these tokens?</summary><div><p>Robinhood Chain is open, so anyone can create a token with a ticker like AAPL. Paritra only tracks the official Robinhood stock token contracts, listed in the Verified contracts section.</p></div></details>
       <details><summary>Is Paritra part of Robinhood?</summary><div><p>No. Paritra is an independent project built on public Robinhood Chain data.</p></div></details>
       <details><summary>Where do I find the real contract address?</summary><div><p>Only on this website (top section and the Token section) and on Paritra’s official X and Telegram. Anything else may be fake.</p></div></details>
       <details><summary>Is this financial advice?</summary><div><p>No. Paritra shows data with its sources. Always do your own research.</p></div></details>
@@ -467,25 +489,120 @@ const TAX = "";           // example: "0% / 0%"
   });
   nav.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { nav.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }); });
 
-  /* watchlist + board */
-  var names = [['TSLA','Tesla'],['NVDA','Nvidia'],['AAPL','Apple'],['MSFT','Microsoft'],['AMZN','Amazon'],['META','Meta'],['GOOGL','Alphabet'],['COIN','Coinbase'],['HOOD','Robinhood'],['PLTR','Palantir'],['SPY','S&P 500 ETF'],['QQQ','Nasdaq-100 ETF']];
+  /* verified stock tokens (official Robinhood contracts) */
+  var TOKENS = [
+    ['TSLA','Tesla','0x322F0929c4625eD5bAd873c95208D54E1c003b2d'],
+    ['NVDA','NVIDIA','0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC'],
+    ['AAPL','Apple','0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9'],
+    ['MSFT','Microsoft','0xe93237C50D904957Cf27E7B1133b510C669c2e74'],
+    ['AMZN','Amazon','0x12f190a9F9d7D37a250758b26824B97CE941bF54'],
+    ['META','Meta Platforms','0xc0D6457C16Cc70d6790Dd43521C899C87ce02f35'],
+    ['GOOGL','Alphabet','0x2e0847E8910a9732eB3fb1bb4b70a580ADAD4FE3'],
+    ['MSTR','MicroStrategy','0xec262a75e413fAfD0dF80480274532C79D42da09'],
+    ['SPY','S&P 500 ETF','0x117cc2133c37B721F49dE2A7a74833232B3B4C0C'],
+    ['QCOM','Qualcomm','0x0f17206447090e464C277571124dD2688E48AEA9']
+  ];
+
+  /* verified list with copy */
   var list = document.getElementById('token-list');
-  names.forEach(function (n) {
+  TOKENS.forEach(function (t) {
     var d = document.createElement('div'); d.className = 'tok';
-    var b = document.createElement('b'); b.textContent = n[0];
-    var s = document.createElement('span'); s.textContent = n[1];
-    d.appendChild(b); d.appendChild(s); list.appendChild(d);
+    var b = document.createElement('b'); b.textContent = t[0];
+    var s = document.createElement('span'); s.textContent = t[1];
+    var a = document.createElement('button'); a.type = 'button';
+    a.textContent = t[2].slice(0, 8) + '…' + t[2].slice(-6);
+    a.setAttribute('aria-label', 'Copy ' + t[0] + ' contract address');
+    a.addEventListener('click', function () {
+      var label = a.textContent;
+      var ok = function () { a.textContent = 'Copied'; setTimeout(function () { a.textContent = label; }, 1400); };
+      if (navigator.clipboard) navigator.clipboard.writeText(t[2]).then(ok, function () { window.prompt('Copy address:', t[2]); });
+      else window.prompt('Copy address:', t[2]);
+    });
+    d.appendChild(b); d.appendChild(s); d.appendChild(a); list.appendChild(d);
   });
-  var rows = document.getElementById('board-rows');
-  names.slice(0, 6).forEach(function (n) {
+
+  /* board rows */
+  var rows = document.getElementById('board-rows'), cells = {};
+  TOKENS.forEach(function (t) {
     var tr = document.createElement('tr');
-    var t = document.createElement('td'); t.textContent = n[0];
-    var co = document.createElement('span'); co.className = 'co'; co.textContent = n[1]; t.appendChild(co);
-    tr.appendChild(t);
-    for (var i = 0; i < 4; i++) { var td = document.createElement('td'); td.textContent = '—'; tr.appendChild(td); }
-    var st = document.createElement('td'); st.innerHTML = '<span class="status">—</span>'; tr.appendChild(st);
+    var td0 = document.createElement('td'); td0.textContent = t[0];
+    var vb = document.createElement('span'); vb.className = 'vbadge'; vb.textContent = 'Verified'; td0.appendChild(vb);
+    var co = document.createElement('span'); co.className = 'co'; co.textContent = t[1]; td0.appendChild(co);
+    tr.appendChild(td0);
+    var c = {};
+    ['price', 'chg', 'liq', 'vol'].forEach(function (k) { var td = document.createElement('td'); td.textContent = '…'; tr.appendChild(td); c[k] = td; });
+    var tdp = document.createElement('td'); tdp.innerHTML = '<span class="soon">Soon</span>'; tr.appendChild(tdp);
     rows.appendChild(tr);
+    cells[t[2].toLowerCase()] = c;
   });
+
+  function fmtPrice(v) {
+    if (v == null || isNaN(v)) return '—';
+    var d = v >= 1000 ? 0 : v >= 1 ? 2 : 4;
+    return '$' + v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function fmtBig(v) {
+    if (v == null || isNaN(v)) return '—';
+    if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+    if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+    return '$' + v.toFixed(0);
+  }
+
+  /* US market status (regular hours, weekdays; holidays not included) */
+  function marketStatus() {
+    var p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date());
+    var get = function (k) { var x = p.find(function (q) { return q.type === k; }); return x ? x.value : ''; };
+    var wd = get('weekday'), h = parseInt(get('hour'), 10) % 24, m = parseInt(get('minute'), 10);
+    var mins = h * 60 + m, weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].indexOf(wd) > -1;
+    var open = weekday && mins >= 570 && mins < 960;
+    document.getElementById('mkt-status').innerHTML = 'US market: <b class="' + (open ? 'up' : 'down') + '">' + (open ? 'Open' : 'Closed') + '</b>';
+  }
+  marketStatus(); setInterval(marketStatus, 60000);
+
+  var statusEl = document.getElementById('board-status'), dot = document.getElementById('live-dot');
+  var API = 'https://api.geckoterminal.com/api/v2/networks/robinhood/tokens/multi/' + TOKENS.map(function (t) { return t[2]; }).join(',') + '?include=top_pools';
+  var loading = false;
+
+  function load() {
+    if (loading) return; loading = true;
+    statusEl.textContent = 'Updating…';
+    fetch(API, { headers: { accept: 'application/json' } })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (json) {
+        var pools = {};
+        (json.included || []).forEach(function (p) { pools[p.id] = p.attributes || {}; });
+        var seen = {};
+        (json.data || []).forEach(function (tok) {
+          var a = tok.attributes || {}, key = String(a.address || '').toLowerCase(), c = cells[key];
+          if (!c) return;
+          seen[key] = true;
+          c.price.textContent = fmtPrice(parseFloat(a.price_usd));
+          c.liq.textContent = fmtBig(parseFloat(a.total_reserve_in_usd));
+          c.vol.textContent = fmtBig(parseFloat(a.volume_usd && a.volume_usd.h24));
+          var rel = tok.relationships && tok.relationships.top_pools && tok.relationships.top_pools.data;
+          var top = rel && rel[0] && pools[rel[0].id];
+          var ch = top && top.price_change_percentage ? parseFloat(top.price_change_percentage.h24) : NaN;
+          c.chg.className = '';
+          if (isNaN(ch)) c.chg.textContent = '—';
+          else { c.chg.textContent = (ch >= 0 ? '+' : '−') + Math.abs(ch).toFixed(2) + '%'; c.chg.className = ch >= 0 ? 'up' : 'down'; }
+        });
+        Object.keys(cells).forEach(function (k) {
+          if (!seen[k]) { var c = cells[k]; c.price.textContent = 'No pool yet'; c.chg.textContent = c.liq.textContent = c.vol.textContent = '—'; }
+        });
+        dot.classList.add('on');
+        statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      })
+      .catch(function () {
+        dot.classList.remove('on');
+        statusEl.textContent = 'Live data is unavailable right now. Try Refresh in a minute.';
+        Object.keys(cells).forEach(function (k) { var c = cells[k]; if (c.price.textContent === '…') { c.price.textContent = c.chg.textContent = c.liq.textContent = c.vol.textContent = '—'; } });
+      })
+      .then(function () { loading = false; });
+  }
+  load();
+  setInterval(function () { if (!document.hidden) load(); }, 60000);
+  document.getElementById('board-refresh').addEventListener('click', load);
 
   /* explainer chart: sample data, 48 hours */
   var seed = 7;
