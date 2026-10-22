@@ -431,7 +431,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="x" href="#">X</a>
       <a data-link="tg" href="#">Telegram</a>
     </nav>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.3</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.4</p>
   </div>
 </footer>
 
@@ -619,13 +619,12 @@ const TAX = "";           // example: "0% / 0%"
     AAPL: '0x6B22A786bAa607d76728168703a39Ea9C99f2cD0',
     GOOGL: '0xF6f373a037c30F0e5010d854385cA89185AE638b'
   };
-  var feeds = null; /* key (token address lowercase) -> { addr, dec } */
+  var feeds = null, seenDesc = '', dirStatus = ''; /* key (token address lowercase) -> { addr, dec } */
 
+  /* "TSLA / USD", "TSLArh / USD", "TSLA.RH / USD", "Robinhood TSLA / USD" all count as TSLA */
   function tickerMatches(text, sym) {
-    var u = String(text || '').toUpperCase().trim();
-    if (u.indexOf(sym) !== 0) return false;
-    var next = u.charAt(sym.length);
-    return next === '' || !/[A-Z]/.test(next);
+    var base = String(text || '').split('/')[0].toUpperCase().replace(/ROBINHOOD|TOKENI[SZ]ED|STOCK|TOKEN/g, '').replace(/[^A-Z0-9]/g, '');
+    return base === sym || base === sym + 'RH' || base === sym + 'X' || base === 'RH' + sym;
   }
   function post(url, payload) {
     return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
@@ -704,9 +703,10 @@ const TAX = "";           // example: "0% / 0%"
           });
         });
         if (!Object.keys(candidates).length) throw new Error('empty');
-        return candidates;
+        dirStatus = 'directory'; return candidates;
       })
       .catch(function () {
+        dirStatus = 'backup list';
         var c = {}; Object.keys(BACKUP_FEEDS).forEach(function (k) { c[k] = { addr: BACKUP_FEEDS[k], dec: 8 }; }); return c;
       })
       .then(function (cand) {
@@ -714,6 +714,7 @@ const TAX = "";           // example: "0% / 0%"
         var syms = Object.keys(cand);
         return rpcBatch(syms.map(function (k) { return { to: cand[k].addr, data: '0x7284e416' }; })).then(function (res) {
           var ok = {};
+          seenDesc = syms.map(function (k, i) { return k + '=' + (res[i] ? '"' + decodeString(res[i]) + '"' : 'none'); }).slice(0, 4).join(', ');
           syms.forEach(function (k, i) {
             if (res[i] && tickerMatches(decodeString(res[i]), k)) {
               var tok = TOKENS.filter(function (t) { return t[0] === k; })[0];
@@ -751,7 +752,7 @@ const TAX = "";           // example: "0% / 0%"
       Object.keys(cells).forEach(function (k) {
         if (!f[k]) { var c = cells[k]; c.fairDone = true; c.fair.innerHTML = '<span class="soon">No feed yet</span>'; if (c.prem.textContent === '…') c.prem.textContent = '—'; }
       });
-      if (!keys.length) { fairStatus.textContent = 'Fair value: no verified feeds found yet.'; return; }
+      if (!keys.length) { feeds = null; fairStatus.textContent = 'Fair value: no verified feeds yet (' + dirStatus + ' via ' + rpcUsed + '; ' + (seenDesc || 'no answers') + ').'; return; }
       return rpcBatch(keys.map(function (k) { return { to: f[k].addr, data: '0xfeaf968c' }; })).then(function (res) {
         keys.forEach(function (k, i) {
           var c = cells[k], hex = res[i];
@@ -766,7 +767,7 @@ const TAX = "";           // example: "0% / 0%"
           c.fair.appendChild(ago);
           updatePremium(c);
         });
-        fairStatus.textContent = 'Fair value: ' + keys.length + ' Chainlink feeds via ' + rpcUsed;
+        fairStatus.textContent = 'Fair value: ' + keys.length + ' Chainlink feeds (' + dirStatus + ') via ' + rpcUsed;
       });
     }).catch(function (e) {
       fairStatus.textContent = 'Fair value unavailable right now (' + (e && e.message ? e.message : 'network') + ').';
