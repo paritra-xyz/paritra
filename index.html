@@ -431,7 +431,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="x" href="#">X</a>
       <a data-link="tg" href="#">Telegram</a>
     </nav>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.4</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.5</p>
   </div>
 </footer>
 
@@ -715,6 +715,7 @@ const TAX = "";           // example: "0% / 0%"
         return rpcBatch(syms.map(function (k) { return { to: cand[k].addr, data: '0x7284e416' }; })).then(function (res) {
           var ok = {};
           seenDesc = syms.map(function (k, i) { return k + '=' + (res[i] ? '"' + decodeString(res[i]) + '"' : 'none'); }).slice(0, 4).join(', ');
+          if (!res.some(function (x) { return x; })) throw new Error('feeds did not answer (' + rpcUsed + ')');
           syms.forEach(function (k, i) {
             if (res[i] && tickerMatches(decodeString(res[i]), k)) {
               var tok = TOKENS.filter(function (t) { return t[0] === k; })[0];
@@ -745,15 +746,19 @@ const TAX = "";           // example: "0% / 0%"
   }
 
   var fairStatus = document.getElementById('fair-status');
+  var fairLoading = false;
   function loadFair() {
-    var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { feeds = f; return f; });
+    if (fairLoading) return;
+    fairLoading = true;
+    var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { if (Object.keys(f).length) feeds = f; return f; });
     return ready.then(function (f) {
       var keys = Object.keys(f);
       Object.keys(cells).forEach(function (k) {
         if (!f[k]) { var c = cells[k]; c.fairDone = true; c.fair.innerHTML = '<span class="soon">No feed yet</span>'; if (c.prem.textContent === '…') c.prem.textContent = '—'; }
       });
-      if (!keys.length) { feeds = null; fairStatus.textContent = 'Fair value: no verified feeds yet (' + dirStatus + ' via ' + rpcUsed + '; ' + (seenDesc || 'no answers') + ').'; return; }
+      if (!keys.length) { fairStatus.textContent = 'Fair value: no verified feeds yet (' + dirStatus + ' via ' + rpcUsed + '; ' + (seenDesc || 'no answers') + ').'; return; }
       return rpcBatch(keys.map(function (k) { return { to: f[k].addr, data: '0xfeaf968c' }; })).then(function (res) {
+        var shown = 0;
         keys.forEach(function (k, i) {
           var c = cells[k], hex = res[i];
           c.fairDone = true;
@@ -765,14 +770,14 @@ const TAX = "";           // example: "0% / 0%"
           c.fair.appendChild(document.createTextNode(fmtPrice(c.fv)));
           var ago = document.createElement('span'); ago.className = 'co'; ago.textContent = 'updated ' + timeAgo(upd);
           c.fair.appendChild(ago);
-          updatePremium(c);
+          updatePremium(c); shown++;
         });
-        fairStatus.textContent = 'Fair value: ' + keys.length + ' Chainlink feeds (' + dirStatus + ') via ' + rpcUsed;
+        fairStatus.textContent = 'Fair value: ' + shown + '/' + keys.length + ' Chainlink prices (' + dirStatus + ') via ' + rpcUsed + ' · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       });
     }).catch(function (e) {
       fairStatus.textContent = 'Fair value unavailable right now (' + (e && e.message ? e.message : 'network') + ').';
       Object.keys(cells).forEach(function (k) { var c = cells[k]; c.fairDone = true; if (c.fair.textContent === '…') c.fair.textContent = '—'; if (c.prem.textContent === '…') c.prem.textContent = '—'; });
-    });
+    }).then(function () { fairLoading = false; });
   }
 
   function loadAll() { load(); loadFair(); }
