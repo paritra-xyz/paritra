@@ -431,7 +431,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="x" href="#">X</a>
       <a data-link="tg" href="#">Telegram</a>
     </nav>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.7</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.8</p>
   </div>
 </footer>
 
@@ -745,6 +745,16 @@ const TAX = "";           // example: "0% / 0%"
         var c = {}; Object.keys(BACKUP_FEEDS).forEach(function (k) { c[k] = { addr: BACKUP_FEEDS[k], dec: 8 }; }); return c;
       })
       .then(function (cand) {
+        /* Feeds from Chainlink's own directory are trusted as listed (no extra on-chain checks,
+           which public endpoints often rate-limit). Backup feeds are still checked on-chain. */
+        if (dirStatus === 'directory') {
+          var byToken = {};
+          Object.keys(cand).forEach(function (k) {
+            var tok = TOKENS.filter(function (t) { return t[0] === k; })[0];
+            if (tok) byToken[tok[2].toLowerCase()] = cand[k];
+          });
+          return byToken;
+        }
         /* verify each feed on-chain: description() must name the ticker */
         var syms = Object.keys(cand);
         var descCalls = syms.map(function (k) { return { to: cand[k].addr, data: '0x7284e416' }; });
@@ -789,8 +799,8 @@ const TAX = "";           // example: "0% / 0%"
   function loadFair() {
     if (fairLoading) return;
     fairLoading = true;
-    if (!feeds) { var cached = recall('paritra_feeds', 864e5); if (cached && Object.keys(cached).length) { feeds = cached; dirStatus = 'saved'; } }
-    var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { if (Object.keys(f).length) { feeds = f; store('paritra_feeds', f); } return f; });
+    if (!feeds) { var cached = recall('paritra_feeds2', 864e5); if (cached && Object.keys(cached).length) { feeds = cached; dirStatus = 'saved'; } }
+    var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { if (Object.keys(f).length) { feeds = f; if (dirStatus === 'directory') store('paritra_feeds2', f); } return f; });
     return ready.then(function (f) {
       var keys = Object.keys(f);
       Object.keys(cells).forEach(function (k) {
