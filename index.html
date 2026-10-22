@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paritra — Stock tokens vs. the real price</title>
+<meta name="description" content="Paritra tracks every stock token on Robinhood Chain and shows its live premium or discount against the real stock price.">
+<meta property="og:title" content="Paritra — Stock tokens vs. the real price">
+<meta property="og:description" content="Live premium and discount for every stock token on Robinhood Chain.">
+<meta property="og:url" content="https://paritra.xyz/">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0F0E'/%3E%3Crect x='10' y='19' width='44' height='9' rx='4.5' fill='%233EE6A8'/%3E%3Crect x='10' y='36' width='29' height='9' rx='4.5' fill='%23F2F5F3'/%3E%3Crect x='44' y='36' width='10' height='9' rx='4.5' fill='%23F5A524'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0F0E; --bg2:#0D1211; --panel:#111816; --line:#1E2724; --line2:#2A3430;
+  --text:#F2F5F3; --muted:#A3B2AC; --faint:#8FA099;
+  --mint:#3EE6A8; --amber:#F5A524;
+  --sans:'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:17px;line-height:1.6}
+a{color:var(--text)}
+a:hover{color:var(--mint)}
+a:focus-visible,button:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:6px}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-0.02em}
+p{margin:0}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+.band{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+section{scroll-margin-top:72px}
+.sec{padding:88px 0;display:flex;flex-direction:column;gap:40px}
+.sec-head{display:flex;flex-direction:column;gap:12px;max-width:40rem}
+.sec-head h2{font-size:clamp(30px,4.2vw,44px);line-height:1.1}
+.sec-head p{color:var(--muted)}
+.kicker{font-family:var(--mono);font-size:13px;color:var(--mint)}
+.muted{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 22px;border-radius:12px;font-weight:600;text-decoration:none;font-size:16px}
+.btn-primary{background:var(--mint);color:var(--bg)}
+.btn-primary:hover{color:var(--bg);background:#6BEDBD}
+.btn-ghost{border:1px solid #33403B;color:var(--text);font-weight:500}
+.btn-ghost:hover{border-color:var(--mint)}
+
+/* CA */
+.ca{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;border:1px solid var(--line2);border-radius:14px;padding:10px 12px 10px 16px;align-self:flex-start;max-width:100%}
+.ca .lbl{font-size:13px;color:var(--faint)}
+.ca code{font-family:var(--mono);font-size:14px;word-break:break-all}
+.ca button{font:inherit;font-size:14px;font-weight:600;color:var(--bg);background:var(--mint);border:0;border-radius:9px;padding:8px 14px;min-height:38px;cursor:pointer}
+.stat.wide{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.stat.wide .ca{border:0;padding:0}
+
+/* header */
+header{position:sticky;top:0;z-index:20;background:rgba(11,15,14,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand span{font-weight:600;font-size:26px;letter-spacing:-0.04em;color:var(--text)}
+.links{display:flex;align-items:center;gap:22px;font-size:15px}
+.links a{text-decoration:none;color:var(--muted)}
+.links a:hover{color:var(--text)}
+.menu-btn{display:none;background:none;border:1px solid var(--line2);color:var(--text);border-radius:10px;width:44px;height:44px;cursor:pointer}
+@media (max-width:860px){
+  .menu-btn{display:inline-flex;align-items:center;justify-content:center}
+  .links{display:none;position:absolute;left:0;right:0;top:100%;flex-direction:column;align-items:stretch;gap:0;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 24px 20px}
+  .links.open{display:flex}
+  .links a{padding:13px 0;border-bottom:1px solid var(--line);font-size:17px}
+  .links .btn{margin-top:14px;border-bottom:0}
+}
+
+/* hero */
+.hero{padding:80px 0 72px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center}
+@media (max-width:960px){.hero{grid-template-columns:minmax(0,1fr);padding-top:56px}}
+.hero h1{font-size:clamp(42px,6.4vw,74px);line-height:1.02;letter-spacing:-0.035em}
+.hero-copy{display:flex;flex-direction:column;gap:24px}
+.hero-copy .lead{font-size:19px;color:var(--muted);max-width:33rem}
+.chips-row{display:flex;flex-wrap:wrap;gap:12px}
+.pill{display:inline-flex;align-self:flex-start;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:999px;padding:6px 14px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--amber)}
+
+/* explainer chart */
+.chart-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.readout div{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.readout small{font-size:12px;color:var(--faint)}
+.readout b{font-family:var(--mono);font-weight:500;font-size:18px;white-space:nowrap}
+.readout .prem b{color:var(--amber)}
+.chart-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+#chart{width:100%;height:auto;display:block;touch-action:pan-y;cursor:crosshair;border-radius:10px}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.sw{width:18px;height:4px;border-radius:2px;display:inline-block}
+.note{font-size:13px;color:var(--faint)}
+
+/* board */
+.board{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px}
+.board-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.board-top h3{font-size:19px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px;min-width:620px}
+th{text-align:left;font-weight:500;font-size:13px;color:var(--faint);padding:10px 10px;border-bottom:1px solid var(--line)}
+td{padding:14px 10px;border-bottom:1px solid #18201D;font-family:var(--mono);color:var(--muted)}
+td:first-child{font-family:var(--sans);font-weight:600;color:var(--text)}
+td .co{display:block;font-weight:400;font-size:13px;color:var(--faint)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+
+/* tokens grid */
+.tokens{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.tok{border:1px solid var(--line2);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:2px}
+.tok b{font-family:var(--mono);font-weight:500;font-size:17px}
+.tok span{font-size:14px;color:var(--muted)}
+
+/* why */
+.why{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px}
+@media (max-width:860px){.why{grid-template-columns:minmax(0,1fr);gap:28px}}
+.why h3{font-size:22px;line-height:1.25;margin-bottom:8px}
+.why h3 em{font-style:normal;color:var(--muted)}
+
+/* features */
+.feats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.feats{grid-template-columns:minmax(0,1fr)}}
+.feat{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;display:flex;gap:18px}
+.feat svg{flex:0 0 auto}
+.feat h3{font-size:20px;margin-bottom:6px}
+.feat p{color:var(--muted)}
+.tag{display:inline-block;margin-left:8px;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--bg);background:var(--amber);border-radius:999px;padding:2px 8px;vertical-align:middle;letter-spacing:0}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;counter-reset:s}
+@media (max-width:860px){.steps{grid-template-columns:minmax(0,1fr)}}
+.step{border-top:2px solid var(--mint);padding-top:18px;display:flex;flex-direction:column;gap:8px}
+.step .n{font-family:var(--mono);font-size:14px;color:var(--mint)}
+.step h3{font-size:21px}
+.step p{color:var(--muted)}
+.formula{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;font-family:var(--mono);font-size:15px;overflow-x:auto;white-space:nowrap}
+.formula .a{color:var(--amber)}
+
+/* token */
+.token-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.token-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stat small{font-size:13px;color:var(--faint)}
+.stat b{font-family:var(--mono);font-weight:500;font-size:20px;word-break:break-word}
+
+/* roadmap */
+.road{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:860px){.road{grid-template-columns:minmax(0,1fr)}}
+.phase{border:1px solid var(--line2);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.phase.now{border-color:var(--mint)}
+.phase .st{align-self:flex-start;font-family:var(--mono);font-size:12px;border-radius:999px;padding:3px 10px;border:1px solid #33403B;color:var(--muted)}
+.phase.now .st{background:var(--mint);border-color:var(--mint);color:var(--bg)}
+.phase h3{font-size:20px}
+.phase ul{margin:0;padding-left:18px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+
+/* docs + faq */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px}
+@media (max-width:860px){.two{grid-template-columns:minmax(0,1fr);gap:72px}}
+.acc{display:flex;flex-direction:column}
+details{border-top:1px solid var(--line)}
+details:last-child{border-bottom:1px solid var(--line)}
+summary{list-style:none;cursor:pointer;padding:18px 36px 18px 0;font-weight:600;font-size:18px;position:relative}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";position:absolute;right:4px;top:14px;font-family:var(--mono);font-size:22px;color:var(--mint);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details > div{padding:0 0 20px;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+details code{font-family:var(--mono);font-size:14px;color:var(--text)}
+
+/* cta + footer */
+.cta{padding:96px 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px}
+.cta h2{font-size:clamp(34px,5vw,56px);line-height:1.05;letter-spacing:-0.03em}
+footer{border-top:1px solid var(--line)}
+.foot{padding:40px 24px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:20px}
+.foot nav{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:15px}
+.foot nav a{text-decoration:none;color:var(--muted)}
+.foot .legal{width:100%;font-size:13px;color:var(--faint)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}summary::after{transition:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="Paritra home">
+      <svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="19" width="44" height="9" rx="4.5" fill="#3EE6A8"/><rect x="10" y="36" width="29" height="9" rx="4.5" fill="#F2F5F3"/><rect x="44" y="36" width="10" height="9" rx="4.5" fill="#F5A524"/></svg>
+      <span>paritra</span>
+    </a>
+    <button class="menu-btn" type="button" id="menu-btn" aria-expanded="false" aria-controls="links" aria-label="Open menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="links" id="links" aria-label="Main">
+      <a href="#board">Parity board</a>
+      <a href="#tokens">Tokens</a>
+      <a href="#how">How it works</a>
+      <a href="#token">Token</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#docs">Docs</a>
+      <a class="btn btn-primary" href="#board" style="min-height:44px;padding:10px 18px">Launch app</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<div class="wrap hero">
+  <div class="hero-copy">
+    <span class="pill"><span class="dot"></span>Built for Robinhood Chain</span>
+    <h1>Stock tokens vs. the real price.</h1>
+    <p class="lead">Stock tokens trade around the clock. The stock market doesn’t. Paritra puts every stock token next to its real stock and shows the premium or discount in one number.</p>
+    <div class="chips-row">
+      <a class="btn btn-primary" href="#board">Open parity board</a>
+      <a class="btn btn-ghost" href="#how">How it works</a>
+    </div>
+    <div class="ca"><span class="lbl">CA</span><code class="ca-text">Coming soon</code><button type="button" class="ca-copy" hidden>Copy</button></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="readout" aria-live="polite">
+      <div><small>Stock</small><b id="r-stock">—</b></div>
+      <div><small>Token</small><b id="r-token">—</b></div>
+      <div class="prem"><small id="r-plabel">Premium</small><b id="r-prem">—</b></div>
+    </div>
+    <div class="chart-meta"><span id="r-time">—</span><span id="r-status">—</span></div>
+    <svg id="chart" viewBox="0 0 600 280" tabindex="0" role="img" aria-label="Illustration: a stock token price drifting away from its stock while the market is closed. Use left and right arrow keys to move through time."></svg>
+    <div class="legend">
+      <span><i class="sw" style="background:#3EE6A8"></i>Stock</span>
+      <span><i class="sw" style="background:#F2F5F3"></i>Token</span>
+      <span><i class="sw" style="background:#F5A524;height:10px"></i>Gap</span>
+      <span><i class="sw" style="background:#18201D;height:10px;border:1px solid #2A3430"></i>Market closed</span>
+    </div>
+    <p class="note">Illustration with sample numbers. Drag across the chart to see how the gap opens after the bell.</p>
+  </div>
+</div>
+
+<section id="board" class="band">
+  <div class="wrap sec">
+    <div class="sec-head">
+      <span class="kicker">Parity board</span>
+      <h2>Every stock token, one table.</h2>
+      <p>Live prices arrive with the beta. This is how the board will look.</p>
+    </div>
+    <div class="board">
+      <div class="board-top">
+        <h3>Premium / discount</h3>
+        <span class="note" style="font-family:var(--mono)">Preview · live data at beta</span>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th scope="col">Token</th><th scope="col">Token price</th><th scope="col">Stock price</th><th scope="col">Premium</th><th scope="col">Pool liquidity</th><th scope="col">Market</th></tr></thead>
+          <tbody id="board-rows"></tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:14px">Premium = token price vs. real stock price. Above zero is a premium, below zero a discount. When the market is closed, the stock price is its last close.</p>
+    </div>
+  </div>
+</section>
+
+<section id="tokens">
+  <div class="wrap sec">
+    <div class="sec-head">
+      <span class="kicker">Watchlist at launch</span>
+      <h2>The names people trade after hours.</h2>
+      <p>Planned first list. Each name goes live on the board once its token has an active pool on Robinhood Chain.</p>
+    </div>
+    <div class="tokens" id="token-list"></div>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap sec">
+    <div class="sec-head">
+      <span class="kicker">Why it matters</span>
+      <h2>A stock token isn’t always worth its stock.</h2>
+    </div>
+    <div class="why">
+      <div><h3>Markets close. <em>Tokens don’t.</em></h3><p class="muted">At night and on weekends the stock price stands still, but the token keeps trading on news, hype and fear.</p></div>
+      <div><h3>Thin pools. <em>Bigger swings.</em></h3><p class="muted">A single large trade in a shallow pool can push the price far from fair value. Depth matters as much as price.</p></div>
+      <div><h3>One number. <em>Clear picture.</em></h3><p class="muted">Paritra turns all of it into a single premium or discount per token, with the source and time behind it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap sec">
+    <div class="sec-head">
+      <span class="kicker">Features</span>
+      <h2>What you check before a stock token trade.</h2>
+    </div>
+    <div class="feats">
+      <div class="feat">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3EE6A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+        <div><h3>Parity board</h3><p>Every stock token, its real stock price and the live premium or discount, side by side.</p></div>
+      </div>
+      <div class="feat">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3EE6A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        <div><h3>Off-hours mode</h3><p>Market status on every row, so you always know when you’re trading against the last close.</p></div>
+      </div>
+      <div class="feat">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3EE6A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg>
+        <div><h3>Pool depth</h3><p>Liquidity and 24h volume per pool, so you know how far one trade can move the price.</p></div>
+      </div>
+      <div class="feat">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#3EE6A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0v4l2 3H4l2-3z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+        <div><h3>Spread alerts<span class="tag">Soon</span></h3><p>A ping on X or Telegram when a premium or discount crosses the level you set.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" class="band">
+  <div class="wrap sec">
+    <div class="sec-head">
+      <span class="kicker">How it works</span>
+      <h2>Stock. Token. The spread between.</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><span class="n">Step 1</span><h3>Read the token</h3><p>Price, liquidity and trades for each stock token pool, straight from Robinhood Chain.</p></div>
+      <div class="step"><span class="n">Step 2</span><h3>Read the stock</h3><p>The real stock price: live when the market is open, the last close when it isn’t.</p></div>
+      <div class="step"><span class="n">Step 3</span><h3>Show the spread</h3><p>One premium or discount per token, with its sources and a timestamp. Nothing guessed.</p></div>
+    </div>
+    <div class="formula" aria-label="Formula">premium % = (token price − stock price) ÷ stock price × 100 &nbsp;→&nbsp; <span class="a">(104.10 − 102.40) ÷ 102.40 × 100 = +1.66%</span></div>
+  </div>
+</section>
+
+<section id="token">
+  <div class="wrap sec">
+    <div class="sec-head">
+      <span class="kicker">Token</span>
+      <h2 id="token-title">The Paritra token</h2>
+      <p>Full details are published here at launch. Always check the contract address on this page before you buy.</p>
+    </div>
+    <div class="token-grid">
+      <div class="stat"><small>Ticker</small><b id="t-ticker">TBA</b></div>
+      <div class="stat"><small>Chain</small><b>Robinhood Chain</b></div>
+      <div class="stat"><small>Total supply</small><b id="t-supply">TBA</b></div>
+      <div class="stat"><small>Buy / sell tax</small><b id="t-tax">TBA</b></div>
+      <div class="stat wide"><small>Contract address</small><div class="ca"><code class="ca-text">Coming soon</code><button type="button" class="ca-copy" hidden>Copy</button></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="roadmap" class="band">
+  <div class="wrap sec">
+    <div class="sec-head">
+      <span class="kicker">Roadmap</span>
+      <h2>Where Paritra is headed</h2>
+    </div>
+    <div class="road">
+      <div class="phase now"><span class="st">Now</span><h3>Phase 1 · Launch</h3><ul><li>Website and docs</li><li>X and Telegram community</li><li>First watchlist of stock tokens</li></ul></div>
+      <div class="phase"><span class="st">Next</span><h3>Phase 2 · Board beta</h3><ul><li>Live premium and discount</li><li>Market status per token</li><li>Pool liquidity and volume</li></ul></div>
+      <div class="phase"><span class="st">Later</span><h3>Phase 3 · Alerts</h3><ul><li>Spread alerts on X and Telegram</li><li>Personal watchlists</li><li>Public API</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap sec two">
+  <section id="docs">
+    <div class="sec-head" style="margin-bottom:24px">
+      <span class="kicker">Docs</span>
+      <h2>The short version</h2>
+    </div>
+    <div class="acc">
+      <details open><summary>Premium and discount</summary><div><p>Paritra compares a token’s price with its stock’s price and shows the difference in percent.</p><p><code>(token − stock) ÷ stock × 100</code></p><p>Positive means the token trades above the stock (premium). Negative means below (discount).</p></div></details>
+      <details><summary>Market status</summary><div><p><b>Open</b>: the stock price is live during regular US market hours.</p><p><b>Closed</b>: nights, weekends and holidays. The stock price is the last official close, so the gap shows how far the token has moved since then.</p></div></details>
+      <details><summary>Data sources</summary><div><p>Token prices, liquidity and trades come from public pool data on Robinhood Chain. Stock prices come from a market data provider. Every number on the board shows its source and update time.</p></div></details>
+      <details><summary>Limits</summary><div><p>Shallow pools can show large, short-lived gaps. Prices can lag by up to a minute. Paritra shows data; it doesn’t tell you what to trade.</p></div></details>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="sec-head" style="margin-bottom:24px">
+      <span class="kicker">FAQ</span>
+      <h2>Good to know</h2>
+    </div>
+    <div class="acc">
+      <details><summary>What is a stock token?</summary><div><p>A token on Robinhood Chain that follows a real stock, like TSLA or NVDA, and can trade 24/7.</p></div></details>
+      <details><summary>Why do the prices differ?</summary><div><p>When the stock market is closed, news still moves the token while the stock waits for the next open. Thin liquidity can widen the gap too.</p></div></details>
+      <details><summary>Is Paritra part of Robinhood?</summary><div><p>No. Paritra is an independent project built on public Robinhood Chain data.</p></div></details>
+      <details><summary>Where do I find the real contract address?</summary><div><p>Only on this website (top section and the Token section) and on Paritra’s official X and Telegram. Anything else may be fake.</p></div></details>
+      <details><summary>Is this financial advice?</summary><div><p>No. Paritra shows data with its sources. Always do your own research.</p></div></details>
+    </div>
+  </section>
+</div>
+
+<div class="band">
+  <div class="wrap cta">
+    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="19" width="44" height="9" rx="4.5" fill="#3EE6A8"/><rect x="10" y="36" width="29" height="9" rx="4.5" fill="#F2F5F3"/><rect x="44" y="36" width="10" height="9" rx="4.5" fill="#F5A524"/></svg>
+    <h2>Stop guessing the price.</h2>
+    <p class="muted" style="max-width:32rem">Follow Paritra for launch news and the first look at the parity board.</p>
+    <div class="chips-row" style="justify-content:center">
+      <a class="btn btn-primary" data-link="x" href="#">Follow on X</a>
+      <a class="btn btn-ghost" data-link="tg" href="#">Join Telegram</a>
+      <a class="btn btn-ghost" data-fallback href="#board">Open parity board</a>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="#top" aria-label="Paritra home">
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="19" width="44" height="9" rx="4.5" fill="#3EE6A8"/><rect x="10" y="36" width="29" height="9" rx="4.5" fill="#F2F5F3"/><rect x="44" y="36" width="10" height="9" rx="4.5" fill="#F5A524"/></svg>
+      <span style="font-size:22px">paritra</span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="#board">Parity board</a>
+      <a href="#docs">Docs</a>
+      <a data-link="x" href="#">X</a>
+      <a data-link="tg" href="#">Telegram</a>
+    </nav>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice.</p>
+  </div>
+</footer>
+
+<script>
+/* ===== EDIT HERE =====
+   Put your details between the quotes.
+   Leave a value empty ("") to keep it hidden or show "TBA". */
+const CA = "";
+const X_URL = "";
+const TELEGRAM_URL = "";
+const TICKER = "";        // example: "$PARI"
+const TOTAL_SUPPLY = "";  // example: "1,000,000,000"
+const TAX = "";           // example: "0% / 0%"
+/* ===================== */
+
+(function () {
+  /* CA (hero + token section) */
+  if (CA) {
+    var short = CA.length > 16 ? CA.slice(0, 6) + '…' + CA.slice(-4) : CA;
+    document.querySelectorAll('.ca-text').forEach(function (c) { c.textContent = short; c.title = CA; });
+    document.querySelectorAll('.ca-copy').forEach(function (b) {
+      b.hidden = false;
+      b.addEventListener('click', function () {
+        var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); };
+        if (navigator.clipboard) { navigator.clipboard.writeText(CA).then(done, function () { window.prompt('Copy the CA:', CA); }); }
+        else { window.prompt('Copy the CA:', CA); }
+      });
+    });
+  }
+
+  /* social links */
+  var links = { x: X_URL, tg: TELEGRAM_URL };
+  var anyLink = false;
+  document.querySelectorAll('[data-link]').forEach(function (a) {
+    var url = links[a.getAttribute('data-link')];
+    if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; anyLink = true; }
+    else { a.style.display = 'none'; }
+  });
+  document.querySelectorAll('[data-fallback]').forEach(function (a) {
+    if (anyLink) a.style.display = 'none';
+    else a.classList.replace('btn-ghost', 'btn-primary');
+  });
+
+  /* token details */
+  if (TICKER) { document.getElementById('t-ticker').textContent = TICKER; document.getElementById('token-title').textContent = 'The ' + TICKER + ' token'; }
+  if (TOTAL_SUPPLY) document.getElementById('t-supply').textContent = TOTAL_SUPPLY;
+  if (TAX) document.getElementById('t-tax').textContent = TAX;
+
+  /* mobile menu */
+  var btn = document.getElementById('menu-btn'), nav = document.getElementById('links');
+  btn.addEventListener('click', function () {
+    var open = nav.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open);
+    btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  });
+  nav.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { nav.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }); });
+
+  /* watchlist + board */
+  var names = [['TSLA','Tesla'],['NVDA','Nvidia'],['AAPL','Apple'],['MSFT','Microsoft'],['AMZN','Amazon'],['META','Meta'],['GOOGL','Alphabet'],['COIN','Coinbase'],['HOOD','Robinhood'],['PLTR','Palantir'],['SPY','S&P 500 ETF'],['QQQ','Nasdaq-100 ETF']];
+  var list = document.getElementById('token-list');
+  names.forEach(function (n) {
+    var d = document.createElement('div'); d.className = 'tok';
+    var b = document.createElement('b'); b.textContent = n[0];
+    var s = document.createElement('span'); s.textContent = n[1];
+    d.appendChild(b); d.appendChild(s); list.appendChild(d);
+  });
+  var rows = document.getElementById('board-rows');
+  names.slice(0, 6).forEach(function (n) {
+    var tr = document.createElement('tr');
+    var t = document.createElement('td'); t.textContent = n[0];
+    var co = document.createElement('span'); co.className = 'co'; co.textContent = n[1]; t.appendChild(co);
+    tr.appendChild(t);
+    for (var i = 0; i < 4; i++) { var td = document.createElement('td'); td.textContent = '—'; tr.appendChild(td); }
+    var st = document.createElement('td'); st.innerHTML = '<span class="status">—</span>'; tr.appendChild(st);
+    rows.appendChild(tr);
+  });
+
+  /* explainer chart: sample data, 48 hours */
+  var seed = 7;
+  function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  var N = 49, stock = [], token = [], open = [];
+  var s = 100, tk = 100;
+  var days = ['Thu', 'Fri'];
+  for (var h = 0; h < N; h++) {
+    var hod = h % 24;
+    var isOpen = (hod >= 10 && hod <= 16) && h < 48;
+    open.push(isOpen);
+    if (isOpen) {
+      if (h > 0 && !open[h - 1]) s += (tk - s) * 0.8;
+      s += (rnd() - 0.45) * 0.9;
+      tk = s + (rnd() - 0.5) * 0.25;
+    } else {
+      var drift = h > 16 && h < 34 ? 0.16 : (h >= 40 ? 0.22 : -0.02);
+      tk += drift + (rnd() - 0.5) * 0.35;
+    }
+    stock.push(+s.toFixed(2)); token.push(+tk.toFixed(2));
+  }
+  var W = 600, H = 280, padT = 16, padB = 28;
+  var all = stock.concat(token);
+  var lo = Math.min.apply(null, all) - 0.6, hi = Math.max.apply(null, all) + 0.6;
+  function X(i) { return i / (N - 1) * W; }
+  function Y(v) { return padT + (hi - v) / (hi - lo) * (H - padT - padB); }
+  var ns = 'http://www.w3.org/2000/svg', svg = document.getElementById('chart');
+  function el(tag, attrs) { var e = document.createElementNS(ns, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); svg.appendChild(e); return e; }
+  el('rect', { x: 0, y: 0, width: W, height: H, fill: '#0B0F0E' });
+  var i0 = null;
+  for (var i = 0; i <= N; i++) {
+    var closed = i < N && !open[i];
+    if (closed && i0 === null) i0 = i;
+    if ((!closed || i === N) && i0 !== null) {
+      el('rect', { x: X(Math.max(i0 - 0.5, 0)), y: 0, width: X(Math.min(i - 0.5, N - 1)) - X(Math.max(i0 - 0.5, 0)), height: H - padB + 6, fill: '#121A18' });
+      i0 = null;
+    }
+  }
+  [0, 24, 48].forEach(function (h) {
+    el('line', { x1: X(h), x2: X(h), y1: 0, y2: H - padB + 6, stroke: '#1E2724', 'stroke-width': 1 });
+  });
+  [[12, days[0] + ' open'], [36, days[1] + ' open']].forEach(function (p) {
+    var t = el('text', { x: X(p[0] + 1), y: H - 8, fill: '#8FA099', 'font-size': 12, 'font-family': 'JetBrains Mono, monospace', 'text-anchor': 'middle' }); t.textContent = p[1];
+  });
+  var gap = token.map(function (v, i) { return X(i) + ',' + Y(v); }).concat(stock.slice().reverse().map(function (v, j) { var i = N - 1 - j; return X(i) + ',' + Y(v); }));
+  el('polygon', { points: gap.join(' '), fill: '#F5A524', 'fill-opacity': 0.2 });
+  el('polyline', { points: stock.map(function (v, i) { return X(i) + ',' + Y(v); }).join(' '), fill: 'none', stroke: '#3EE6A8', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  el('polyline', { points: token.map(function (v, i) { return X(i) + ',' + Y(v); }).join(' '), fill: 'none', stroke: '#F2F5F3', 'stroke-width': 2.5, 'stroke-dasharray': '7 6', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  var cursor = el('line', { y1: 0, y2: H - padB + 6, stroke: '#F5A524', 'stroke-width': 1.5 });
+  var dS = el('circle', { r: 6, fill: '#3EE6A8', stroke: '#0B0F0E', 'stroke-width': 2 });
+  var dT = el('circle', { r: 6, fill: '#F2F5F3', stroke: '#0B0F0E', 'stroke-width': 2 });
+
+  var rS = document.getElementById('r-stock'), rT = document.getElementById('r-token'), rP = document.getElementById('r-prem'),
+      rPL = document.getElementById('r-plabel'), rTime = document.getElementById('r-time'), rSt = document.getElementById('r-status');
+  var cur = N - 1;
+  function show(i) {
+    cur = Math.max(0, Math.min(N - 1, i));
+    var x = X(cur);
+    cursor.setAttribute('x1', x); cursor.setAttribute('x2', x);
+    dS.setAttribute('cx', x); dS.setAttribute('cy', Y(stock[cur]));
+    dT.setAttribute('cx', x); dT.setAttribute('cy', Y(token[cur]));
+    var p = (token[cur] - stock[cur]) / stock[cur] * 100;
+    rS.textContent = '$' + stock[cur].toFixed(2);
+    rT.textContent = '$' + token[cur].toFixed(2);
+    rPL.textContent = p >= 0 ? 'Premium' : 'Discount';
+    rP.textContent = (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(2) + '%';
+    var day = cur < 24 ? days[0] : (cur < 48 ? days[1] : 'Sat');
+    rTime.textContent = day + ' ' + String(cur % 24).padStart(2, '0') + ':00 (sample)';
+    rSt.textContent = open[cur] ? 'Market open · stock price live' : 'Market closed · stock at last close';
+  }
+  show(cur);
+  function fromEvent(e) {
+    var r = svg.getBoundingClientRect();
+    var cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    show(Math.round(cx / r.width * (N - 1)));
+  }
+  svg.addEventListener('pointermove', fromEvent);
+  svg.addEventListener('pointerdown', fromEvent);
+  svg.addEventListener('touchmove', fromEvent, { passive: true });
+  svg.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') { show(cur - 1); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { show(cur + 1); e.preventDefault(); }
+  });
+})();
+</script>
+</body>
+</html>
