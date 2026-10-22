@@ -431,7 +431,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="x" href="#">X</a>
       <a data-link="tg" href="#">Telegram</a>
     </nav>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.5</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.6</p>
   </div>
 </footer>
 
@@ -668,6 +668,28 @@ const TAX = "";           // example: "0% / 0%"
     }
     return out;
   }
+  /* Direct calls (not through Multicall): Chainlink price reads can be access-controlled
+     and only answer when called directly. One JSON-RPC batch, else one by one, paced. */
+  function directCalls(calls) {
+    return pickRpc().then(function (url) {
+      var body = calls.map(function (c, i) { return { jsonrpc: '2.0', id: i, method: 'eth_call', params: [{ to: c.to, data: c.data }, 'latest'] }; });
+      return post(url, body).then(function (res) {
+        if (!Array.isArray(res)) throw new Error('no batch');
+        var out = []; res.forEach(function (x) { out[x.id] = typeof x.result === 'string' && x.result.length > 2 ? x.result : null; });
+        if (!out.some(function (x) { return x; })) throw new Error('empty batch');
+        return out;
+      }).catch(function () {
+        var out = [], i = 0;
+        function next() {
+          if (i >= calls.length) return Promise.resolve(out);
+          var c = calls[i];
+          return ethCall(url, c.to, c.data).then(function (r) { out[i] = r; }, function () { out[i] = null; })
+            .then(function () { i++; return new Promise(function (ok) { setTimeout(ok, 550); }); }).then(next);
+        }
+        return next();
+      });
+    });
+  }
   /* run many read calls: one Multicall3 request, or one by one if that fails */
   function rpcBatch(calls) {
     if (!calls.length) return Promise.resolve([]);
@@ -757,7 +779,7 @@ const TAX = "";           // example: "0% / 0%"
         if (!f[k]) { var c = cells[k]; c.fairDone = true; c.fair.innerHTML = '<span class="soon">No feed yet</span>'; if (c.prem.textContent === '…') c.prem.textContent = '—'; }
       });
       if (!keys.length) { fairStatus.textContent = 'Fair value: no verified feeds yet (' + dirStatus + ' via ' + rpcUsed + '; ' + (seenDesc || 'no answers') + ').'; return; }
-      return rpcBatch(keys.map(function (k) { return { to: f[k].addr, data: '0xfeaf968c' }; })).then(function (res) {
+      return directCalls(keys.map(function (k) { return { to: f[k].addr, data: '0xfeaf968c' }; })).then(function (res) {
         var shown = 0;
         keys.forEach(function (k, i) {
           var c = cells[k], hex = res[i];
