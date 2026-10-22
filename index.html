@@ -431,7 +431,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="x" href="#">X</a>
       <a data-link="tg" href="#">Telegram</a>
     </nav>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.2</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.3</p>
   </div>
 </footer>
 
@@ -602,8 +602,14 @@ const TAX = "";           // example: "0% / 0%"
   }
   /* ===== Fair value from Chainlink (read on-chain) ===== */
   /* Several public endpoints, tried in order; the first that answers is remembered. */
-  var RPCS = ['https://rpc.mainnet.chain.robinhood.com', 'https://robinhoodchain.blockscout.com/api/eth-rpc'];
-  var rpcIdx = 0, rpcUsed = '';
+  var RPCS = [
+    ['Robinhood RPC', 'https://rpc.mainnet.chain.robinhood.com'],
+    ['NodeFlare', 'https://rpc.nodeflare.app/robinhood/public'],
+    ['Blockscout', 'https://robinhoodchain.blockscout.com/api/eth-rpc'],
+    ['HyperRPC', 'https://robinhood.rpc.hypersync.xyz']
+  ];
+  var MULTICALL = '0xcA11bde05977b3631167028862bE2a173976CA11';
+  var rpc = null, rpcUsed = '', rpcErrors = [];
   var DIRECTORY = 'https://reference-data-directory.vercel.app/feeds-robinhood-mainnet.json';
   /* Backup feed list, used only if the Chainlink directory can't be reached.
      Every feed is checked on-chain (its description must name the right ticker) before use. */
@@ -621,23 +627,57 @@ const TAX = "";           // example: "0% / 0%"
     var next = u.charAt(sym.length);
     return next === '' || !/[A-Z]/.test(next);
   }
-  function rpcOne(url, to, data) {
-    return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: to, data: data }, 'latest'] }) })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function (j) { if (!j || typeof j.result !== 'string') throw new Error('bad'); return j.result; });
+  function post(url, payload) {
+    return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   }
-  /* find a working endpoint with the first call, then run all calls on it */
+  function ethCall(url, to, data) {
+    return post(url, { jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: to, data: data }, 'latest'] })
+      .then(function (j) { if (!j || typeof j.result !== 'string') throw new Error((j && j.error && j.error.message) || 'no result'); return j.result; });
+  }
+  /* find the first endpoint that answers from this browser (checks chain id 4663) */
+  function pickRpc() {
+    if (rpc) return Promise.resolve(rpc);
+    rpcErrors = [];
+    function tryAt(i) {
+      if (i >= RPCS.length) return Promise.reject(new Error('no endpoint reachable: ' + rpcErrors.join('; ')));
+      return post(RPCS[i][1], { jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] })
+        .then(function (j) {
+          if (!j || String(j.result).toLowerCase() !== '0x1237') throw new Error('wrong chain');
+          rpc = RPCS[i][1]; rpcUsed = RPCS[i][0]; return rpc;
+        })
+        .catch(function (e) { rpcErrors.push(RPCS[i][0] + ' ' + ((e && e.message) || 'failed').slice(0, 40)); return tryAt(i + 1); });
+    }
+    return tryAt(0);
+  }
+  function pad(hex) { return hex.replace(/^0x/, '').padStart(64, '0'); }
+  /* encode Multicall3.aggregate3 for 4-byte call data */
+  function encodeAggregate3(calls) {
+    var n = calls.length, out = '0x82ad56cb' + pad('20') + pad(n.toString(16));
+    for (var i = 0; i < n; i++) out += pad((n * 32 + i * 160).toString(16));
+    calls.forEach(function (c) {
+      out += pad(c.to.toLowerCase()) + pad('1') + pad('60') + pad('4') + c.data.replace(/^0x/, '').padEnd(64, '0');
+    });
+    return out;
+  }
+  function decodeAggregate3(hex) {
+    var h = hex.replace(/^0x/, ''), w = function (pos) { return parseInt(h.substr(pos * 2, 64), 16); };
+    var arr = w(0), n = w(arr), base = arr + 32, out = [];
+    for (var i = 0; i < n; i++) {
+      var t = base + w(base + i * 32), ok = w(t) === 1, boff = t + w(t + 32), len = w(boff);
+      out.push(ok && len ? '0x' + h.substr((boff + 32) * 2, len * 2) : null);
+    }
+    return out;
+  }
+  /* run many read calls: one Multicall3 request, or one by one if that fails */
   function rpcBatch(calls) {
     if (!calls.length) return Promise.resolve([]);
-    function tryFrom(i) {
-      if (i >= RPCS.length) return Promise.reject(new Error('no rpc'));
-      return rpcOne(RPCS[i], calls[0].to, calls[0].data).then(function (first) {
-        rpcIdx = i; rpcUsed = RPCS[i].indexOf('blockscout') > -1 ? 'Blockscout' : 'Robinhood RPC';
-        return Promise.all(calls.slice(1).map(function (c) { return rpcOne(RPCS[i], c.to, c.data).catch(function () { return null; }); }))
-          .then(function (rest) { return [first].concat(rest); });
-      }, function () { return tryFrom(i + 1); });
-    }
-    return tryFrom(rpcIdx);
+    return pickRpc().then(function (url) {
+      return ethCall(url, MULTICALL, encodeAggregate3(calls)).then(decodeAggregate3)
+        .catch(function () {
+          return Promise.all(calls.map(function (c) { return ethCall(url, c.to, c.data).catch(function () { return null; }); }));
+        });
+    }).catch(function (e) { rpc = null; throw e; });
   }
   function word(hex, i) { return hex.slice(2 + i * 64, 2 + (i + 1) * 64); }
   function decodeString(hex) {
