@@ -10,6 +10,7 @@
 <meta property="og:url" content="https://paritra.xyz/">
 <meta name="theme-color" content="#0B0F0E">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0F0E'/%3E%3Crect x='10' y='19' width='44' height='9' rx='4.5' fill='%233EE6A8'/%3E%3Crect x='10' y='36' width='29' height='9' rx='4.5' fill='%23F2F5F3'/%3E%3Crect x='44' y='36' width='10' height='9' rx='4.5' fill='%23F5A524'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -122,6 +123,24 @@ td .co{display:block;font-weight:400;font-size:13px;color:var(--faint)}
 .tok button:hover{color:var(--mint)}
 .tok button:focus-visible{outline:2px solid var(--mint);outline-offset:2px;border-radius:4px}
 
+/* phone: each token becomes a card */
+@media (max-width:700px){
+  .board{padding:14px}
+  .board .scroll{overflow:visible}
+  .board table{min-width:0;display:block}
+  .board thead{display:none}
+  .board tbody{display:flex;flex-direction:column;gap:10px}
+  .board tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 10px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .board td{display:flex;flex-direction:column;gap:2px;padding:0;border:0;min-width:0;font-size:15px;word-break:break-word}
+  .board td::before{content:attr(data-label);font-family:var(--sans);font-size:12px;color:var(--faint)}
+  .board td[data-k="tok"]{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:18px}
+  .board td[data-k="tok"]::before{content:none}
+  .board td[data-k="tok"] .co{width:100%;font-size:13px}
+  .board td[data-k="tok"] .vbadge{margin-left:0}
+  .board td[data-k="prem"]{font-size:18px;font-weight:500}
+  .board td .co{font-size:11px}
+}
+
 /* tokens grid */
 .tokens{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
 .tok{border:1px solid var(--line2);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:2px}
@@ -182,6 +201,12 @@ summary::after{content:"+";position:absolute;right:4px;top:14px;font-family:var(
 details[open] summary::after{transform:rotate(45deg)}
 details > div{padding:0 0 20px;color:var(--muted);display:flex;flex-direction:column;gap:10px}
 details code{font-family:var(--mono);font-size:14px;color:var(--text)}
+
+/* social icons */
+.socials{display:flex;gap:10px;align-items:center}
+.socials a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid #33403B;border-radius:12px;color:var(--muted);text-decoration:none;font-size:18px}
+.socials a:hover{color:var(--bg);background:var(--mint);border-color:var(--mint)}
+.socials.big a{width:52px;height:52px;font-size:22px;border-radius:14px}
 
 /* cta + footer */
 .cta{padding:96px 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px}
@@ -268,7 +293,7 @@ footer{border-top:1px solid var(--line)}
         </table>
       </div>
       <div class="board-foot">
-        <span><span id="board-status" class="note">Loading live data…</span><br><span id="fair-status" class="note">Fair value: loading…</span></span>
+        <span><span id="board-status" class="note">Loading live data…</span> <span class="note">· Sorted by biggest gap</span><br><span id="fair-status" class="note">Fair value: loading…</span></span>
         <button type="button" class="refresh" id="board-refresh">Refresh</button>
       </div>
       <p class="note" style="margin-top:10px"><b>DEX price</b>: what the token trades for on Robinhood Chain, via <a href="https://www.geckoterminal.com/robinhood/pools" target="_blank" rel="noopener">GeckoTerminal</a>. <b>Fair value</b>: the official <a href="https://docs.chain.link/data-feeds/tokenized-equity-feeds/robinhood" target="_blank" rel="noopener">Chainlink</a> price for one token (stock price × token multiplier), read on-chain. It updates 24/5 and holds its last value when the stock market is shut. <b>Premium</b> = DEX price vs. fair value. Refreshed every minute. Data, not financial advice.</p>
@@ -410,9 +435,12 @@ footer{border-top:1px solid var(--line)}
     <h2>Stop guessing the price.</h2>
     <p class="muted" style="max-width:32rem">Follow Paritra for launch news and the first look at the parity board.</p>
     <div class="chips-row" style="justify-content:center">
-      <a class="btn btn-primary" data-link="x" href="#">Follow on X</a>
-      <a class="btn btn-ghost" data-link="tg" href="#">Join Telegram</a>
-      <a class="btn btn-ghost" data-fallback href="#board">Open parity board</a>
+      <a class="btn btn-primary" href="#board">Open parity board</a>
+    </div>
+    <div class="socials big">
+      <a data-link="x" href="#" aria-label="Paritra on X"><i class="fa-brands fa-x-twitter" aria-hidden="true"></i></a>
+      <a data-link="tg" href="#" aria-label="Paritra on Telegram"><i class="fa-brands fa-telegram" aria-hidden="true"></i></a>
+      <a data-link="gh" href="#" aria-label="Paritra on GitHub"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
     </div>
   </div>
 </div>
@@ -428,10 +456,13 @@ footer{border-top:1px solid var(--line)}
     <nav aria-label="Footer">
       <a href="#board">Parity board</a>
       <a href="#docs">Docs</a>
-      <a data-link="x" href="#">X</a>
-      <a data-link="tg" href="#">Telegram</a>
     </nav>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.8</p>
+    <div class="socials">
+      <a data-link="x" href="#" aria-label="Paritra on X"><i class="fa-brands fa-x-twitter" aria-hidden="true"></i></a>
+      <a data-link="tg" href="#" aria-label="Paritra on Telegram"><i class="fa-brands fa-telegram" aria-hidden="true"></i></a>
+      <a data-link="gh" href="#" aria-label="Paritra on GitHub"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
+    </div>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2C.3</p>
   </div>
 </footer>
 
@@ -441,7 +472,8 @@ footer{border-top:1px solid var(--line)}
    Leave a value empty ("") to keep it hidden or show "TBA". */
 const CA = "";
 const X_URL = "";
-const TELEGRAM_URL = "";
+const TELEGRAM_URL = "https://t.me/paritrachat";
+const GITHUB_URL = "https://github.com/paritra-xyz/paritra";
 const TICKER = "";        // example: "$PARI"
 const TOTAL_SUPPLY = "";  // example: "1,000,000,000"
 const TAX = "";           // example: "0% / 0%"
@@ -463,16 +495,12 @@ const TAX = "";           // example: "0% / 0%"
   }
 
   /* social links */
-  var links = { x: X_URL, tg: TELEGRAM_URL };
+  var links = { x: X_URL, tg: TELEGRAM_URL, gh: GITHUB_URL };
   var anyLink = false;
   document.querySelectorAll('[data-link]').forEach(function (a) {
     var url = links[a.getAttribute('data-link')];
     if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; anyLink = true; }
     else { a.style.display = 'none'; }
-  });
-  document.querySelectorAll('[data-fallback]').forEach(function (a) {
-    if (anyLink) a.style.display = 'none';
-    else a.classList.replace('btn-ghost', 'btn-primary');
   });
 
   /* token details */
@@ -525,13 +553,18 @@ const TAX = "";           // example: "0% / 0%"
   var rows = document.getElementById('board-rows'), cells = {};
   TOKENS.forEach(function (t) {
     var tr = document.createElement('tr');
-    var td0 = document.createElement('td'); td0.textContent = t[0];
+    var td0 = document.createElement('td'); td0.textContent = t[0]; td0.setAttribute('data-k', 'tok');
     var vb = document.createElement('span'); vb.className = 'vbadge'; vb.textContent = 'Verified'; td0.appendChild(vb);
     var co = document.createElement('span'); co.className = 'co'; co.textContent = t[1]; td0.appendChild(co);
     tr.appendChild(td0);
     var c = {};
-    ['price', 'fair', 'prem', 'chg', 'liq', 'vol'].forEach(function (k) { var td = document.createElement('td'); td.textContent = '…'; tr.appendChild(td); c[k] = td; });
-    c.sym = t[0]; c.dex = NaN; c.fv = NaN;
+    var LABELS = { price: 'DEX price', fair: 'Fair value', prem: 'Premium', chg: '24h', liq: 'Liquidity', vol: 'Volume 24h' };
+    ['price', 'fair', 'prem', 'chg', 'liq', 'vol'].forEach(function (k) {
+      var td = document.createElement('td'); td.textContent = '…';
+      td.setAttribute('data-k', k); td.setAttribute('data-label', LABELS[k]);
+      tr.appendChild(td); c[k] = td;
+    });
+    c.sym = t[0]; c.dex = NaN; c.fv = NaN; c.p = NaN; c.liqV = 0; c.tr = tr;
     rows.appendChild(tr);
     cells[t[2].toLowerCase()] = c;
   });
@@ -578,6 +611,7 @@ const TAX = "";           // example: "0% / 0%"
           if (!c) return;
           seen[key] = true;
           c.dex = parseFloat(a.price_usd); c.price.textContent = fmtPrice(c.dex); updatePremium(c);
+          c.liqV = parseFloat(a.total_reserve_in_usd) || 0;
           c.liq.textContent = fmtBig(parseFloat(a.total_reserve_in_usd));
           c.vol.textContent = fmtBig(parseFloat(a.volume_usd && a.volume_usd.h24));
           var rel = tok.relationships && tok.relationships.top_pools && tok.relationships.top_pools.data;
@@ -790,8 +824,24 @@ const TAX = "";           // example: "0% / 0%"
       return;
     }
     var p = (c.dex - c.fv) / c.fv * 100;
+    c.p = p;
     c.prem.className = Math.abs(p) < 0.05 ? '' : (p > 0 ? 'up' : 'down');
     c.prem.textContent = (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(2) + '%';
+    sortSoon();
+  }
+
+  /* biggest premium or discount first; tokens without a premium go last, by liquidity */
+  var sortTimer = null;
+  function sortSoon() { clearTimeout(sortTimer); sortTimer = setTimeout(sortRows, 150); }
+  function sortRows() {
+    var list = Object.keys(cells).map(function (k) { return cells[k]; });
+    list.sort(function (a, b) {
+      var ha = !isNaN(a.p), hb = !isNaN(b.p);
+      if (ha !== hb) return ha ? -1 : 1;
+      if (ha) return Math.abs(b.p) - Math.abs(a.p);
+      return b.liqV - a.liqV;
+    });
+    list.forEach(function (c) { rows.appendChild(c.tr); });
   }
 
   var fairStatus = document.getElementById('fair-status');
