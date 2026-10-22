@@ -431,7 +431,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="x" href="#">X</a>
       <a data-link="tg" href="#">Telegram</a>
     </nav>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.6</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2B.7</p>
   </div>
 </footer>
 
@@ -626,24 +626,37 @@ const TAX = "";           // example: "0% / 0%"
     var base = String(text || '').split('/')[0].toUpperCase().replace(/ROBINHOOD|TOKENI[SZ]ED|STOCK|TOKEN/g, '').replace(/[^A-Z0-9]/g, '');
     return base === sym || base === sym + 'RH' || base === sym + 'X' || base === 'RH' + sym;
   }
+  var lastPost = 0, queue = Promise.resolve();
   function post(url, payload) {
-    return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
-      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    var job = queue.then(function () {
+      var wait = Math.max(0, lastPost + 650 - Date.now());
+      return new Promise(function (ok) { setTimeout(ok, wait); });
+    }).then(function () {
+      lastPost = Date.now();
+      return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    });
+    queue = job.catch(function () {});
+    return job;
   }
   function ethCall(url, to, data) {
     return post(url, { jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: to, data: data }, 'latest'] })
       .then(function (j) { if (!j || typeof j.result !== 'string') throw new Error((j && j.error && j.error.message) || 'no result'); return j.result; });
   }
   /* find the first endpoint that answers from this browser (checks chain id 4663) */
+  function store(key, val) { try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), v: val })); } catch (e) {} }
+  function recall(key, maxAge) { try { var x = JSON.parse(localStorage.getItem(key) || 'null'); return x && Date.now() - x.t < maxAge ? x.v : null; } catch (e) { return null; } }
   function pickRpc() {
     if (rpc) return Promise.resolve(rpc);
+    var saved = recall('paritra_rpc', 864e5);
+    if (saved && RPCS.some(function (r) { return r[1] === saved[1]; })) { rpc = saved[1]; rpcUsed = saved[0]; return Promise.resolve(rpc); }
     rpcErrors = [];
     function tryAt(i) {
       if (i >= RPCS.length) return Promise.reject(new Error('no endpoint reachable: ' + rpcErrors.join('; ')));
       return post(RPCS[i][1], { jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] })
         .then(function (j) {
           if (!j || String(j.result).toLowerCase() !== '0x1237') throw new Error('wrong chain');
-          rpc = RPCS[i][1]; rpcUsed = RPCS[i][0]; return rpc;
+          rpc = RPCS[i][1]; rpcUsed = RPCS[i][0]; store('paritra_rpc', RPCS[i]); return rpc;
         })
         .catch(function (e) { rpcErrors.push(RPCS[i][0] + ' ' + ((e && e.message) || 'failed').slice(0, 40)); return tryAt(i + 1); });
     }
@@ -734,7 +747,11 @@ const TAX = "";           // example: "0% / 0%"
       .then(function (cand) {
         /* verify each feed on-chain: description() must name the ticker */
         var syms = Object.keys(cand);
-        return rpcBatch(syms.map(function (k) { return { to: cand[k].addr, data: '0x7284e416' }; })).then(function (res) {
+        var descCalls = syms.map(function (k) { return { to: cand[k].addr, data: '0x7284e416' }; });
+        return rpcBatch(descCalls).then(function (res) {
+          if (res.some(function (x) { return x; })) return res;
+          return new Promise(function (ok) { setTimeout(ok, 2000); }).then(function () { return directCalls(descCalls); });
+        }).then(function (res) {
           var ok = {};
           seenDesc = syms.map(function (k, i) { return k + '=' + (res[i] ? '"' + decodeString(res[i]) + '"' : 'none'); }).slice(0, 4).join(', ');
           if (!res.some(function (x) { return x; })) throw new Error('feeds did not answer (' + rpcUsed + ')');
@@ -772,7 +789,8 @@ const TAX = "";           // example: "0% / 0%"
   function loadFair() {
     if (fairLoading) return;
     fairLoading = true;
-    var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { if (Object.keys(f).length) feeds = f; return f; });
+    if (!feeds) { var cached = recall('paritra_feeds', 864e5); if (cached && Object.keys(cached).length) { feeds = cached; dirStatus = 'saved'; } }
+    var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { if (Object.keys(f).length) { feeds = f; store('paritra_feeds', f); } return f; });
     return ready.then(function (f) {
       var keys = Object.keys(f);
       Object.keys(cells).forEach(function (k) {
@@ -797,6 +815,8 @@ const TAX = "";           // example: "0% / 0%"
         fairStatus.textContent = 'Fair value: ' + shown + '/' + keys.length + ' Chainlink prices (' + dirStatus + ') via ' + rpcUsed + ' · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       });
     }).catch(function (e) {
+      rpc = null; try { localStorage.removeItem('paritra_rpc'); } catch (x) {}
+      RPCS.push(RPCS.shift()); /* try the next endpoint first next time */
       fairStatus.textContent = 'Fair value unavailable right now (' + (e && e.message ? e.message : 'network') + ').';
       Object.keys(cells).forEach(function (k) { var c = cells[k]; c.fairDone = true; if (c.fair.textContent === '…') c.fair.textContent = '—'; if (c.prem.textContent === '…') c.prem.textContent = '—'; });
     }).then(function () { fairLoading = false; });
