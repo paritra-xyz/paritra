@@ -1,0 +1,42 @@
+name: Paritra alerts
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Send a test message"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paritra-alerts
+  cancel-in-progress: false
+
+jobs:
+  alerts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check prices and send alerts
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TEST_MESSAGE: ${{ inputs.test }}
+        run: node alert.js
+      - name: Save alert history
+        run: |
+          if [ -n "$(git status --porcelain alerts-state.json)" ]; then
+            git config user.name "paritra-bot"
+            git config user.email "bot@paritra.xyz"
+            git add alerts-state.json
+            git commit -m "Update alert history [skip ci]"
+            git push
+          fi
