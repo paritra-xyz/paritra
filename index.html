@@ -33,7 +33,7 @@ p{margin:0}
 .wrap{max-width:1200px;margin:0 auto;padding:0 24px}
 .band{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 section{scroll-margin-top:72px}
-.sec{padding:88px 0;display:flex;flex-direction:column;gap:40px}
+.sec{padding-top:88px;padding-bottom:88px;display:flex;flex-direction:column;gap:40px}
 .sec-head{display:flex;flex-direction:column;gap:12px;max-width:40rem}
 .sec-head h2{font-size:clamp(30px,4.2vw,44px);line-height:1.1}
 .sec-head p{color:var(--muted)}
@@ -71,8 +71,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(11,15,14,.92);backdrop-f
 }
 
 /* hero */
-.hero{padding:80px 0 72px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center}
-@media (max-width:960px){.hero{grid-template-columns:minmax(0,1fr);padding-top:56px}}
+.hero{padding-top:80px;padding-bottom:72px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center}
+@media (max-width:960px){.hero{grid-template-columns:minmax(0,1fr);padding-top:48px}}
 .hero h1{font-size:clamp(42px,6.4vw,74px);line-height:1.02;letter-spacing:-0.035em}
 .hero-copy{display:flex;flex-direction:column;gap:24px}
 .hero-copy .lead{font-size:19px;color:var(--muted);max-width:33rem}
@@ -123,9 +123,33 @@ td .co{display:block;font-weight:400;font-size:13px;color:var(--faint)}
 .tok button:hover{color:var(--mint)}
 .tok button:focus-visible{outline:2px solid var(--mint);outline-offset:2px;border-radius:4px}
 
+/* phone comfort */
+@media (max-width:700px){
+  body{font-size:16px;line-height:1.65}
+  .wrap{padding-left:22px;padding-right:22px}
+  .sec{padding-top:64px;padding-bottom:64px;gap:28px}
+  .hero{gap:36px;padding-bottom:56px}
+  .hero h1{font-size:40px;line-height:1.08}
+  .hero-copy{gap:20px}
+  .hero-copy .lead{font-size:17px}
+  .sec-head h2{font-size:30px;line-height:1.15}
+  .sec-head p{font-size:16px}
+  .chart-card{padding:16px}
+  .readout b{font-size:16px}
+  .feat{padding:20px;gap:14px}
+  .phase{padding:20px}
+  .stat{padding:16px}
+  .stat b{font-size:17px}
+  .cta{padding-top:72px;padding-bottom:72px}
+  .cta h2{font-size:34px}
+  summary{font-size:17px}
+  .foot{padding:32px 22px}
+  .formula{font-size:13px;padding:16px}
+}
+
 /* phone: each token becomes a card */
 @media (max-width:700px){
-  .board{padding:14px}
+  .board{padding:16px}
   .board .scroll{overflow:visible}
   .board table{min-width:0;display:block}
   .board thead{display:none}
@@ -209,7 +233,7 @@ details code{font-family:var(--mono);font-size:14px;color:var(--text)}
 .socials.big a{width:52px;height:52px;font-size:22px;border-radius:14px}
 
 /* cta + footer */
-.cta{padding:96px 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px}
+.cta{padding-top:96px;padding-bottom:96px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px}
 .cta h2{font-size:clamp(34px,5vw,56px);line-height:1.05;letter-spacing:-0.03em}
 footer{border-top:1px solid var(--line)}
 .foot{padding:40px 24px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:20px}
@@ -462,7 +486,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="tg" href="#" aria-label="Paritra on Telegram"><i class="fa-brands fa-telegram" aria-hidden="true"></i></a>
       <a data-link="gh" href="#" aria-label="Paritra on GitHub"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
     </div>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2C.3</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 2C.4</p>
   </div>
 </footer>
 
