@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parity board · Paritra</title>
+<meta name="description" content="Paritra tracks every stock token on Robinhood Chain and shows its live premium or discount against the real stock price.">
+<meta property="og:title" content="Paritra — Stock tokens vs. the real price">
+<meta property="og:description" content="Live premium and discount for every stock token on Robinhood Chain.">
+<meta property="og:url" content="https://paritra.xyz/">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0F0E'/%3E%3Crect x='10' y='19' width='44' height='9' rx='4.5' fill='%233EE6A8'/%3E%3Crect x='10' y='36' width='29' height='9' rx='4.5' fill='%23F2F5F3'/%3E%3Crect x='44' y='36' width='10' height='9' rx='4.5' fill='%23F5A524'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0F0E; --bg2:#0D1211; --panel:#111816; --line:#1E2724; --line2:#2A3430;
+  --text:#F2F5F3; --muted:#A3B2AC; --faint:#8FA099;
+  --mint:#3EE6A8; --amber:#F5A524;
+  --sans:'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:17px;line-height:1.6}
+a{color:var(--text)}
+a:hover{color:var(--mint)}
+a:focus-visible,button:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--mint);outline-offset:3px;border-radius:6px}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-0.02em}
+p{margin:0}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+.band{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+section{scroll-margin-top:72px}
+.sec{padding-top:88px;padding-bottom:88px;display:flex;flex-direction:column;gap:40px}
+.sec-head{display:flex;flex-direction:column;gap:12px;max-width:40rem}
+.sec-head h2{font-size:clamp(30px,4.2vw,44px);line-height:1.1}
+.sec-head p{color:var(--muted)}
+.kicker{font-family:var(--mono);font-size:13px;color:var(--mint)}
+.muted{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 22px;border-radius:12px;font-weight:600;text-decoration:none;font-size:16px}
+.btn-primary{background:var(--mint);color:var(--bg)}
+.btn-primary:hover{color:var(--bg);background:#6BEDBD}
+.btn-ghost{border:1px solid #33403B;color:var(--text);font-weight:500}
+.btn-ghost:hover{border-color:var(--mint)}
+
+/* CA */
+.ca{display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px;border:1px solid var(--line2);border-radius:14px;padding:10px 12px 10px 16px;align-self:flex-start;max-width:100%}
+.ca .lbl{font-size:13px;color:var(--faint)}
+.ca code{font-family:var(--mono);font-size:14px;word-break:break-all}
+.ca button{font:inherit;font-size:14px;font-weight:600;color:var(--bg);background:var(--mint);border:0;border-radius:9px;padding:8px 14px;min-height:38px;cursor:pointer}
+.stat.wide{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.stat.wide .ca{border:0;padding:0}
+
+/* header */
+header{position:sticky;top:0;z-index:20;background:rgba(11,15,14,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand span{font-weight:600;font-size:26px;letter-spacing:-0.04em;color:var(--text)}
+.links{display:flex;align-items:center;gap:22px;font-size:15px}
+.links a{text-decoration:none;color:var(--muted)}
+.links a:hover{color:var(--text)}
+.menu-btn{display:none;background:none;border:1px solid var(--line2);color:var(--text);border-radius:10px;width:44px;height:44px;cursor:pointer}
+@media (max-width:860px){
+  .menu-btn{display:inline-flex;align-items:center;justify-content:center}
+  .links{display:none;position:absolute;left:0;right:0;top:100%;flex-direction:column;align-items:stretch;gap:0;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 24px 20px}
+  .links.open{display:flex}
+  .links a{padding:13px 0;border-bottom:1px solid var(--line);font-size:17px}
+  .links .btn{margin-top:14px;border-bottom:0}
+}
+
+/* hero */
+.hero{padding-top:80px;padding-bottom:72px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center}
+@media (max-width:960px){.hero{grid-template-columns:minmax(0,1fr);padding-top:48px}}
+.hero h1{font-size:clamp(42px,6.4vw,74px);line-height:1.02;letter-spacing:-0.035em}
+.hero-copy{display:flex;flex-direction:column;gap:24px}
+.hero-copy .lead{font-size:19px;color:var(--muted);max-width:33rem}
+.chips-row{display:flex;flex-wrap:wrap;gap:12px}
+.pill{display:inline-flex;align-self:flex-start;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:999px;padding:6px 14px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--amber)}
+
+/* explainer chart */
+.chart-card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.readout div{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.readout small{font-size:12px;color:var(--faint)}
+.readout b{font-family:var(--mono);font-weight:500;font-size:18px;white-space:nowrap}
+.readout .prem b{color:var(--amber)}
+.chart-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+#chart{width:100%;height:auto;display:block;touch-action:pan-y;cursor:crosshair;border-radius:10px}
+.legend{display:flex;flex-wrap:wrap;gap:18px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.sw{width:18px;height:4px;border-radius:2px;display:inline-block}
+.note{font-size:13px;color:var(--faint)}
+
+/* board */
+.board{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px}
+.board-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.board-top h3{font-size:19px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px;min-width:620px}
+th{text-align:left;font-weight:500;font-size:13px;color:var(--faint);padding:10px 10px;border-bottom:1px solid var(--line)}
+td{padding:14px 10px;border-bottom:1px solid #18201D;font-family:var(--mono);color:var(--muted)}
+td:first-child{font-family:var(--sans);font-weight:600;color:var(--text)}
+td .co{display:block;font-weight:400;font-size:13px;color:var(--faint)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+
+/* live board */
+.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#5A6B65;margin-right:9px;vertical-align:middle}
+.live-dot.on{background:var(--mint);box-shadow:0 0 0 4px rgba(62,230,168,.18)}
+.board-top h3{display:flex;align-items:center}
+.mkt{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.mkt b{font-weight:500}
+.board-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
+.refresh{font:inherit;font-size:14px;font-weight:500;color:var(--text);background:none;border:1px solid #33403B;border-radius:10px;padding:8px 14px;min-height:40px;cursor:pointer}
+.refresh:hover{border-color:var(--mint)}
+.up{color:var(--mint)!important}
+.down{color:#FF8A7A!important}
+.vbadge{display:inline-block;margin-left:6px;font-family:var(--mono);font-size:10px;font-weight:500;color:var(--mint);border:1px solid rgba(62,230,168,.4);border-radius:999px;padding:1px 6px;vertical-align:middle}
+.soon{font-size:12px;color:var(--faint)}
+.tok button{all:unset;cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:6px;word-break:break-all}
+.tok button:hover{color:var(--mint)}
+.tok button:focus-visible{outline:2px solid var(--mint);outline-offset:2px;border-radius:4px}
+
+/* phone comfort */
+@media (max-width:700px){
+  body{font-size:16px;line-height:1.65}
+  .wrap{padding-left:22px;padding-right:22px}
+  .sec{padding-top:64px;padding-bottom:64px;gap:28px}
+  .hero{gap:36px;padding-bottom:56px}
+  .hero h1{font-size:40px;line-height:1.08}
+  .hero-copy{gap:20px}
+  .hero-copy .lead{font-size:17px}
+  .sec-head h2{font-size:30px;line-height:1.15}
+  .sec-head p{font-size:16px}
+  .chart-card{padding:16px}
+  .readout b{font-size:16px}
+  .feat{padding:20px;gap:14px}
+  .phase{padding:20px}
+  .stat{padding:16px}
+  .stat b{font-size:17px}
+  .cta{padding-top:72px;padding-bottom:72px}
+  .cta h2{font-size:34px}
+  summary{font-size:17px}
+  .foot{padding:32px 22px}
+  .formula{font-size:13px;padding:16px}
+}
+
+/* phone: each token becomes a card */
+@media (max-width:700px){
+  .board{padding:16px}
+  .board .scroll{overflow:visible}
+  .board table{min-width:0;display:block}
+  .board thead{display:none}
+  .board tbody{display:flex;flex-direction:column;gap:10px}
+  .board tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 10px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .board td{display:flex;flex-direction:column;gap:2px;padding:0;border:0;min-width:0;font-size:15px;word-break:break-word}
+  .board td::before{content:attr(data-label);font-family:var(--sans);font-size:12px;color:var(--faint)}
+  .board td[data-k="tok"]{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:18px}
+  .board td[data-k="tok"]::before{content:none}
+  .board td[data-k="tok"] .co{width:100%;font-size:13px}
+  .board td[data-k="tok"] .vbadge{margin-left:0}
+  .board td[data-k="prem"]{font-size:18px;font-weight:500}
+  .board td .co{font-size:11px}
+}
+
+/* tokens grid */
+.tokens{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.tok{border:1px solid var(--line2);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:2px}
+.tok b{font-family:var(--mono);font-weight:500;font-size:17px}
+.tok span{font-size:14px;color:var(--muted)}
+
+/* why */
+.why{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px}
+@media (max-width:860px){.why{grid-template-columns:minmax(0,1fr);gap:28px}}
+.why h3{font-size:22px;line-height:1.25;margin-bottom:8px}
+.why h3 em{font-style:normal;color:var(--muted)}
+
+/* features */
+.feats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.feats{grid-template-columns:minmax(0,1fr)}}
+.feat{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;display:flex;gap:18px}
+.feat svg{flex:0 0 auto}
+.feat h3{font-size:20px;margin-bottom:6px}
+.feat p{color:var(--muted)}
+.tag{display:inline-block;margin-left:8px;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--bg);background:var(--amber);border-radius:999px;padding:2px 8px;vertical-align:middle;letter-spacing:0}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;counter-reset:s}
+@media (max-width:860px){.steps{grid-template-columns:minmax(0,1fr)}}
+.step{border-top:2px solid var(--mint);padding-top:18px;display:flex;flex-direction:column;gap:8px}
+.step .n{font-family:var(--mono);font-size:14px;color:var(--mint)}
+.step h3{font-size:21px}
+.step p{color:var(--muted)}
+.formula{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;font-family:var(--mono);font-size:15px;overflow-x:auto;white-space:nowrap}
+.formula .a{color:var(--amber)}
+
+/* token */
+.token-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.token-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stat small{font-size:13px;color:var(--faint)}
+.stat b{font-family:var(--mono);font-weight:500;font-size:20px;word-break:break-word}
+
+/* roadmap */
+.road{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:860px){.road{grid-template-columns:minmax(0,1fr)}}
+.phase{border:1px solid var(--line2);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.phase.now{border-color:var(--mint)}
+.phase .st{align-self:flex-start;font-family:var(--mono);font-size:12px;border-radius:999px;padding:3px 10px;border:1px solid #33403B;color:var(--muted)}
+.phase.now .st{background:var(--mint);border-color:var(--mint);color:var(--bg)}
+.phase h3{font-size:20px}
+.phase ul{margin:0;padding-left:18px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+
+/* docs + faq */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px}
+@media (max-width:860px){.two{grid-template-columns:minmax(0,1fr);gap:72px}}
+.acc{display:flex;flex-direction:column}
+details{border-top:1px solid var(--line)}
+details:last-child{border-bottom:1px solid var(--line)}
+summary{list-style:none;cursor:pointer;padding:18px 36px 18px 0;font-weight:600;font-size:18px;position:relative}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";position:absolute;right:4px;top:14px;font-family:var(--mono);font-size:22px;color:var(--mint);transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details > div{padding:0 0 20px;color:var(--muted);display:flex;flex-direction:column;gap:10px}
+details code{font-family:var(--mono);font-size:14px;color:var(--text)}
+
+/* social icons */
+.socials{display:flex;gap:10px;align-items:center}
+.socials a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid #33403B;border-radius:12px;color:var(--muted);text-decoration:none;font-size:18px}
+.socials a:hover{color:var(--bg);background:var(--mint);border-color:var(--mint)}
+.socials.big a{width:52px;height:52px;font-size:22px;border-radius:14px}
+
+/* cta + footer */
+.cta{padding-top:96px;padding-bottom:96px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px}
+.cta h2{font-size:clamp(34px,5vw,56px);line-height:1.05;letter-spacing:-0.03em}
+footer{border-top:1px solid var(--line)}
+.foot{padding:40px 24px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:20px}
+.foot nav{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:15px}
+.foot nav a{text-decoration:none;color:var(--muted)}
+.foot .legal{width:100%;font-size:13px;color:var(--faint)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}summary::after{transition:none}}
+[hidden]{display:none!important}
+.links a.active{color:var(--text)}
+.page-top{padding-top:56px}
+@media (max-width:700px){.page-top{padding-top:36px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="./" aria-label="Paritra home">
+      <svg width="38" height="38" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="19" width="44" height="9" rx="4.5" fill="#3EE6A8"/><rect x="10" y="36" width="29" height="9" rx="4.5" fill="#F2F5F3"/><rect x="44" y="36" width="10" height="9" rx="4.5" fill="#F5A524"/></svg>
+      <span>paritra</span>
+    </a>
+    <button class="menu-btn" type="button" id="menu-btn" aria-expanded="false" aria-controls="links" aria-label="Open menu">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <nav class="links" id="links" aria-label="Main">
+      <a href="board" aria-current="page" class="active">Parity board</a>
+      <a href="tokens">Verified</a>
+      <a href="docs">Docs</a>
+      <a class="btn btn-primary" href="board" style="min-height:44px;padding:10px 18px">Launch app</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+<section id="board" class="page-top">
+  <div class="wrap sec">
+    <div class="sec-head">
+      <span class="kicker">Parity board</span>
+      <h2>Every stock token, one table.</h2>
+      <p>Live data for verified Robinhood stock tokens only: the DEX price, the official fair value, and the premium or discount between them.</p>
+    </div>
+    <div class="board">
+      <div class="board-top">
+        <h3><span class="live-dot" id="live-dot"></span>Live on Robinhood Chain</h3>
+        <span class="mkt" id="mkt-status">US market: —</span>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th scope="col">Token</th><th scope="col">DEX price</th><th scope="col">Fair value</th><th scope="col">Premium</th><th scope="col">24h</th><th scope="col">Liquidity</th><th scope="col">Volume 24h</th></tr></thead>
+          <tbody id="board-rows"></tbody>
+        </table>
+      </div>
+      <div class="board-foot">
+        <span><span id="board-status" class="note">Loading live data…</span> <span class="note">· Sorted by biggest gap</span><br><span id="fair-status" class="note">Fair value: loading…</span></span>
+        <button type="button" class="refresh" id="board-refresh">Refresh</button>
+      </div>
+      <p class="note" style="margin-top:10px"><b>DEX price</b>: what the token trades for on Robinhood Chain, via <a href="https://www.geckoterminal.com/robinhood/pools" target="_blank" rel="noopener">GeckoTerminal</a>. <b>Fair value</b>: the official <a href="https://docs.chain.link/data-feeds/tokenized-equity-feeds/robinhood" target="_blank" rel="noopener">Chainlink</a> price for one token (stock price × token multiplier), read on-chain. It updates 24/5 and holds its last value when the stock market is shut. <b>Premium</b> = DEX price vs. fair value. Refreshed every minute. Data, not financial advice.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="brand" href="./" aria-label="Paritra home">
+      <svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="19" width="44" height="9" rx="4.5" fill="#3EE6A8"/><rect x="10" y="36" width="29" height="9" rx="4.5" fill="#F2F5F3"/><rect x="44" y="36" width="10" height="9" rx="4.5" fill="#F5A524"/></svg>
+      <span style="font-size:22px">paritra</span>
+    </a>
+    <nav aria-label="Footer">
+      <a href="board">Parity board</a>
+      <a href="tokens">Verified tokens</a>
+      <a href="docs">Docs</a>
+    </nav>
+    <div class="socials">
+      <a data-link="x" href="#" aria-label="Paritra on X"><i class="fa-brands fa-x-twitter" aria-hidden="true"></i></a>
+      <a data-link="tg" href="#" aria-label="Paritra on Telegram"><i class="fa-brands fa-telegram" aria-hidden="true"></i></a>
+      <a data-link="gh" href="#" aria-label="Paritra on GitHub"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
+    </div>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 3.1</p>
+  </div>
+</footer>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var C = window.PARITRA || {};
+  var CA = C.CA || '', X_URL = C.X_URL || '', TELEGRAM_URL = C.TELEGRAM_URL || '', GITHUB_URL = C.GITHUB_URL || '';
+  var TICKER = C.TICKER || '', TOTAL_SUPPLY = C.TOTAL_SUPPLY || '', TAX = C.TAX || '';
+
+  /* CA (hero + token section) */
+  if (CA) {
+    document.querySelectorAll('[data-ca-box]').forEach(function (e) { e.hidden = false; });
+    var short = CA.length > 16 ? CA.slice(0, 6) + '…' + CA.slice(-4) : CA;
+    document.querySelectorAll('.ca-text').forEach(function (c) { c.textContent = short; c.title = CA; });
+    document.querySelectorAll('.ca-copy').forEach(function (b) {
+      b.hidden = false;
+      b.addEventListener('click', function () {
+        var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1500); };
+        if (navigator.clipboard) { navigator.clipboard.writeText(CA).then(done, function () { window.prompt('Copy the CA:', CA); }); }
+        else { window.prompt('Copy the CA:', CA); }
+      });
+    });
+  }
+
+  /* social links */
+  var links = { x: X_URL, tg: TELEGRAM_URL, gh: GITHUB_URL };
+  var anyLink = false;
+  document.querySelectorAll('[data-link]').forEach(function (a) {
+    var url = links[a.getAttribute('data-link')];
+    if (url) { a.href = url; a.target = '_blank'; a.rel = 'noopener'; anyLink = true; }
+    else { a.style.display = 'none'; }
+  });
+
+  /* token details */
+  if (TICKER && document.getElementById('t-ticker')) { document.getElementById('t-ticker').textContent = TICKER; document.getElementById('token-title').textContent = 'The ' + TICKER + ' token'; }
+  if (TOTAL_SUPPLY && document.getElementById('t-supply')) document.getElementById('t-supply').textContent = TOTAL_SUPPLY;
+  if (TAX && document.getElementById('t-tax')) document.getElementById('t-tax').textContent = TAX;
+
+  /* mobile menu */
+  var btn = document.getElementById('menu-btn'), nav = document.getElementById('links');
+  btn.addEventListener('click', function () {
+    var open = nav.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open);
+    btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+  });
+  nav.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { nav.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }); });
+})();
+(function () {
+  /* verified stock tokens (official Robinhood contracts) */
+  var TOKENS = [
+    ['TSLA','Tesla','0x322F0929c4625eD5bAd873c95208D54E1c003b2d'],
+    ['NVDA','NVIDIA','0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC'],
+    ['AAPL','Apple','0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9'],
+    ['MSFT','Microsoft','0xe93237C50D904957Cf27E7B1133b510C669c2e74'],
+    ['AMZN','Amazon','0x12f190a9F9d7D37a250758b26824B97CE941bF54'],
+    ['META','Meta Platforms','0xc0D6457C16Cc70d6790Dd43521C899C87ce02f35'],
+    ['GOOGL','Alphabet','0x2e0847E8910a9732eB3fb1bb4b70a580ADAD4FE3'],
+    ['MSTR','MicroStrategy','0xec262a75e413fAfD0dF80480274532C79D42da09'],
+    ['SPY','S&P 500 ETF','0x117cc2133c37B721F49dE2A7a74833232B3B4C0C'],
+    ['QCOM','Qualcomm','0x0f17206447090e464C277571124dD2688E48AEA9']
+  ];
+
+  var list = null;
+  /* board rows */
+  var rows = document.getElementById('board-rows'), cells = {};
+  TOKENS.forEach(function (t) {
+    var tr = document.createElement('tr');
+    var td0 = document.createElement('td'); td0.textContent = t[0]; td0.setAttribute('data-k', 'tok');
+    var vb = document.createElement('span'); vb.className = 'vbadge'; vb.textContent = 'Verified'; td0.appendChild(vb);
+    var co = document.createElement('span'); co.className = 'co'; co.textContent = t[1]; td0.appendChild(co);
+    tr.appendChild(td0);
+    var c = {};
+    var LABELS = { price: 'DEX price', fair: 'Fair value', prem: 'Premium', chg: '24h', liq: 'Liquidity', vol: 'Volume 24h' };
+    ['price', 'fair', 'prem', 'chg', 'liq', 'vol'].forEach(function (k) {
+      var td = document.createElement('td'); td.textContent = '…';
+      td.setAttribute('data-k', k); td.setAttribute('data-label', LABELS[k]);
+      tr.appendChild(td); c[k] = td;
+    });
+    c.sym = t[0]; c.dex = NaN; c.fv = NaN; c.p = NaN; c.liqV = 0; c.tr = tr;
+    rows.appendChild(tr);
+    cells[t[2].toLowerCase()] = c;
+  });
+
+  function fmtPrice(v) {
+    if (v == null || isNaN(v)) return '—';
+    var d = v >= 1000 ? 0 : v >= 1 ? 2 : 4;
+    return '$' + v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function fmtBig(v) {
+    if (v == null || isNaN(v)) return '—';
+    if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+    if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+    return '$' + v.toFixed(0);
+  }
+
+  /* US market status (regular hours, weekdays; holidays not included) */
+  function marketStatus() {
+    var p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date());
+    var get = function (k) { var x = p.find(function (q) { return q.type === k; }); return x ? x.value : ''; };
+    var wd = get('weekday'), h = parseInt(get('hour'), 10) % 24, m = parseInt(get('minute'), 10);
+    var mins = h * 60 + m, weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].indexOf(wd) > -1;
+    var open = weekday && mins >= 570 && mins < 960;
+    document.getElementById('mkt-status').innerHTML = 'US market: <b class="' + (open ? 'up' : 'down') + '">' + (open ? 'Open' : 'Closed') + '</b>';
+  }
+  marketStatus(); setInterval(marketStatus, 60000);
+
+  var statusEl = document.getElementById('board-status'), dot = document.getElementById('live-dot');
+  var API = 'https://api.geckoterminal.com/api/v2/networks/robinhood/tokens/multi/' + TOKENS.map(function (t) { return t[2]; }).join(',') + '?include=top_pools';
+  var loading = false;
+
+  function load() {
+    if (loading) return; loading = true;
+    statusEl.textContent = 'Updating…';
+    fetch(API, { headers: { accept: 'application/json' } })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (json) {
+        var pools = {};
+        (json.included || []).forEach(function (p) { pools[p.id] = p.attributes || {}; });
+        var seen = {};
+        (json.data || []).forEach(function (tok) {
+          var a = tok.attributes || {}, key = String(a.address || '').toLowerCase(), c = cells[key];
+          if (!c) return;
+          seen[key] = true;
+          c.dex = parseFloat(a.price_usd); c.price.textContent = fmtPrice(c.dex); updatePremium(c);
+          c.liqV = parseFloat(a.total_reserve_in_usd) || 0;
+          c.liq.textContent = fmtBig(parseFloat(a.total_reserve_in_usd));
+          c.vol.textContent = fmtBig(parseFloat(a.volume_usd && a.volume_usd.h24));
+          var rel = tok.relationships && tok.relationships.top_pools && tok.relationships.top_pools.data;
+          var top = rel && rel[0] && pools[rel[0].id];
+          var ch = top && top.price_change_percentage ? parseFloat(top.price_change_percentage.h24) : NaN;
+          c.chg.className = '';
+          if (isNaN(ch)) c.chg.textContent = '—';
+          else { c.chg.textContent = (ch >= 0 ? '+' : '−') + Math.abs(ch).toFixed(2) + '%'; c.chg.className = ch >= 0 ? 'up' : 'down'; }
+        });
+        Object.keys(cells).forEach(function (k) {
+          if (!seen[k]) { var c = cells[k]; c.price.textContent = 'No pool yet'; c.chg.textContent = c.liq.textContent = c.vol.textContent = '—'; }
+        });
+        dot.classList.add('on');
+        statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      })
+      .catch(function () {
+        dot.classList.remove('on');
+        statusEl.textContent = 'Live data is unavailable right now. Try Refresh in a minute.';
+        Object.keys(cells).forEach(function (k) { var c = cells[k]; if (c.price.textContent === '…') { c.price.textContent = c.chg.textContent = c.liq.textContent = c.vol.textContent = '—'; } });
+      })
+      .then(function () { loading = false; });
+  }
+  /* ===== Fair value from Chainlink (read on-chain) ===== */
+  /* Several public endpoints, tried in order; the first that answers is remembered. */
+  var RPCS = [
+    ['Robinhood RPC', 'https://rpc.mainnet.chain.robinhood.com'],
+    ['NodeFlare', 'https://rpc.nodeflare.app/robinhood/public'],
+    ['Blockscout', 'https://robinhoodchain.blockscout.com/api/eth-rpc'],
+    ['HyperRPC', 'https://robinhood.rpc.hypersync.xyz']
+  ];
+  var MULTICALL = '0xcA11bde05977b3631167028862bE2a173976CA11';
+  var rpc = null, rpcUsed = '', rpcErrors = [];
+  var DIRECTORY = 'https://reference-data-directory.vercel.app/feeds-robinhood-mainnet.json';
+  /* Backup feed list, used only if the Chainlink directory can't be reached.
+     Every feed is checked on-chain (its description must name the right ticker) before use. */
+  var BACKUP_FEEDS = {
+    TSLA: '0x4A1166a659A55625345e9515b32adECea5547C38',
+    NVDA: '0x379EC4f7C378F34a1B47E4F3cbeBCbAC3E8E9F15',
+    AAPL: '0x6B22A786bAa607d76728168703a39Ea9C99f2cD0',
+    GOOGL: '0xF6f373a037c30F0e5010d854385cA89185AE638b'
+  };
+  var feeds = null, seenDesc = '', dirStatus = ''; /* key (token address lowercase) -> { addr, dec } */
+
+  /* "TSLA / USD", "TSLArh / USD", "TSLA.RH / USD", "Robinhood TSLA / USD" all count as TSLA */
+  function tickerMatches(text, sym) {
+    var base = String(text || '').split('/')[0].toUpperCase().replace(/ROBINHOOD|TOKENI[SZ]ED|STOCK|TOKEN/g, '').replace(/[^A-Z0-9]/g, '');
+    return base === sym || base === sym + 'RH' || base === sym + 'X' || base === 'RH' + sym;
+  }
+  var lastPost = 0, queue = Promise.resolve();
+  function post(url, payload) {
+    var job = queue.then(function () {
+      var wait = Math.max(0, lastPost + 650 - Date.now());
+      return new Promise(function (ok) { setTimeout(ok, wait); });
+    }).then(function () {
+      lastPost = Date.now();
+      return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+    });
+    queue = job.catch(function () {});
+    return job;
+  }
+  function ethCall(url, to, data) {
+    return post(url, { jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: to, data: data }, 'latest'] })
+      .then(function (j) { if (!j || typeof j.result !== 'string') throw new Error((j && j.error && j.error.message) || 'no result'); return j.result; });
+  }
+  /* find the first endpoint that answers from this browser (checks chain id 4663) */
+  function store(key, val) { try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), v: val })); } catch (e) {} }
+  function recall(key, maxAge) { try { var x = JSON.parse(localStorage.getItem(key) || 'null'); return x && Date.now() - x.t < maxAge ? x.v : null; } catch (e) { return null; } }
+  function pickRpc() {
+    if (rpc) return Promise.resolve(rpc);
+    var saved = recall('paritra_rpc', 864e5);
+    if (saved && RPCS.some(function (r) { return r[1] === saved[1]; })) { rpc = saved[1]; rpcUsed = saved[0]; return Promise.resolve(rpc); }
+    rpcErrors = [];
+    function tryAt(i) {
+      if (i >= RPCS.length) return Promise.reject(new Error('no endpoint reachable: ' + rpcErrors.join('; ')));
+      return post(RPCS[i][1], { jsonrpc: '2.0', id: 1, method: 'eth_chainId', params: [] })
+        .then(function (j) {
+          if (!j || String(j.result).toLowerCase() !== '0x1237') throw new Error('wrong chain');
+          rpc = RPCS[i][1]; rpcUsed = RPCS[i][0]; store('paritra_rpc', RPCS[i]); return rpc;
+        })
+        .catch(function (e) { rpcErrors.push(RPCS[i][0] + ' ' + ((e && e.message) || 'failed').slice(0, 40)); return tryAt(i + 1); });
+    }
+    return tryAt(0);
+  }
+  function pad(hex) { return hex.replace(/^0x/, '').padStart(64, '0'); }
+  /* encode Multicall3.aggregate3 for 4-byte call data */
+  function encodeAggregate3(calls) {
+    var n = calls.length, out = '0x82ad56cb' + pad('20') + pad(n.toString(16));
+    for (var i = 0; i < n; i++) out += pad((n * 32 + i * 160).toString(16));
+    calls.forEach(function (c) {
+      out += pad(c.to.toLowerCase()) + pad('1') + pad('60') + pad('4') + c.data.replace(/^0x/, '').padEnd(64, '0');
+    });
+    return out;
+  }
+  function decodeAggregate3(hex) {
+    var h = hex.replace(/^0x/, ''), w = function (pos) { return parseInt(h.substr(pos * 2, 64), 16); };
+    var arr = w(0), n = w(arr), base = arr + 32, out = [];
+    for (var i = 0; i < n; i++) {
+      var t = base + w(base + i * 32), ok = w(t) === 1, boff = t + w(t + 32), len = w(boff);
+      out.push(ok && len ? '0x' + h.substr((boff + 32) * 2, len * 2) : null);
+    }
+    return out;
+  }
+  /* Direct calls (not through Multicall): Chainlink price reads can be access-controlled
+     and only answer when called directly. One JSON-RPC batch, else one by one, paced. */
+  function directCalls(calls) {
+    return pickRpc().then(function (url) {
+      var body = calls.map(function (c, i) { return { jsonrpc: '2.0', id: i, method: 'eth_call', params: [{ to: c.to, data: c.data }, 'latest'] }; });
+      return post(url, body).then(function (res) {
+        if (!Array.isArray(res)) throw new Error('no batch');
+        var out = []; res.forEach(function (x) { out[x.id] = typeof x.result === 'string' && x.result.length > 2 ? x.result : null; });
+        if (!out.some(function (x) { return x; })) throw new Error('empty batch');
+        return out;
+      }).catch(function () {
+        var out = [], i = 0;
+        function next() {
+          if (i >= calls.length) return Promise.resolve(out);
+          var c = calls[i];
+          return ethCall(url, c.to, c.data).then(function (r) { out[i] = r; }, function () { out[i] = null; })
+            .then(function () { i++; return new Promise(function (ok) { setTimeout(ok, 550); }); }).then(next);
+        }
+        return next();
+      });
+    });
+  }
+  /* run many read calls: one Multicall3 request, or one by one if that fails */
+  function rpcBatch(calls) {
+    if (!calls.length) return Promise.resolve([]);
+    return pickRpc().then(function (url) {
+      return ethCall(url, MULTICALL, encodeAggregate3(calls)).then(decodeAggregate3)
+        .catch(function () {
+          return Promise.all(calls.map(function (c) { return ethCall(url, c.to, c.data).catch(function () { return null; }); }));
+        });
+    }).catch(function (e) { rpc = null; throw e; });
+  }
+  function word(hex, i) { return hex.slice(2 + i * 64, 2 + (i + 1) * 64); }
+  function decodeString(hex) {
+    try {
+      var len = parseInt(word(hex, 1), 16), data = hex.slice(2 + 128, 2 + 128 + len * 2), str = '';
+      for (var i = 0; i < data.length; i += 2) str += String.fromCharCode(parseInt(data.substr(i, 2), 16));
+      return str;
+    } catch (e) { return ''; }
+  }
+
+  function findFeeds() {
+    var candidates = {}; /* sym -> {addr, dec} */
+    return fetch(DIRECTORY).then(function (r) { if (!r.ok) throw new Error('dir'); return r.json(); })
+      .then(function (list) {
+        (Array.isArray(list) ? list : []).forEach(function (f) {
+          var name = String(f.name || ''), base = name.split('/')[0];
+          var addr = f.proxyAddress || f.contractAddress;
+          if (!addr || name.indexOf('/') < 0 || !/USD/.test(name.split('/')[1] || '')) return;
+          TOKENS.forEach(function (t) {
+            if (!tickerMatches(base, t[0])) return;
+            var tokenized = /robinhood|tokeni[sz]ed/i.test(JSON.stringify(f));
+            var prev = candidates[t[0]];
+            if (!prev || (tokenized && !prev.tokenized)) candidates[t[0]] = { addr: addr, dec: f.decimals != null ? +f.decimals : 8, tokenized: tokenized };
+          });
+        });
+        if (!Object.keys(candidates).length) throw new Error('empty');
+        dirStatus = 'directory'; return candidates;
+      })
+      .catch(function () {
+        dirStatus = 'backup list';
+        var c = {}; Object.keys(BACKUP_FEEDS).forEach(function (k) { c[k] = { addr: BACKUP_FEEDS[k], dec: 8 }; }); return c;
+      })
+      .then(function (cand) {
+        /* Feeds from Chainlink's own directory are trusted as listed (no extra on-chain checks,
+           which public endpoints often rate-limit). Backup feeds are still checked on-chain. */
+        if (dirStatus === 'directory') {
+          var byToken = {};
+          Object.keys(cand).forEach(function (k) {
+            var tok = TOKENS.filter(function (t) { return t[0] === k; })[0];
+            if (tok) byToken[tok[2].toLowerCase()] = cand[k];
+          });
+          return byToken;
+        }
+        /* verify each feed on-chain: description() must name the ticker */
+        var syms = Object.keys(cand);
+        var descCalls = syms.map(function (k) { return { to: cand[k].addr, data: '0x7284e416' }; });
+        return rpcBatch(descCalls).then(function (res) {
+          if (res.some(function (x) { return x; })) return res;
+          return new Promise(function (ok) { setTimeout(ok, 2000); }).then(function () { return directCalls(descCalls); });
+        }).then(function (res) {
+          var ok = {};
+          seenDesc = syms.map(function (k, i) { return k + '=' + (res[i] ? '"' + decodeString(res[i]) + '"' : 'none'); }).slice(0, 4).join(', ');
+          if (!res.some(function (x) { return x; })) throw new Error('feeds did not answer (' + rpcUsed + ')');
+          syms.forEach(function (k, i) {
+            if (res[i] && tickerMatches(decodeString(res[i]), k)) {
+              var tok = TOKENS.filter(function (t) { return t[0] === k; })[0];
+              ok[tok[2].toLowerCase()] = cand[k];
+            }
+          });
+          return ok;
+        });
+      });
+  }
+
+  function timeAgo(sec) {
+    var d = Date.now() / 1000 - sec;
+    if (d < 90) return 'just now';
+    if (d < 3600) return Math.round(d / 60) + 'm ago';
+    if (d < 86400) return Math.round(d / 3600) + 'h ago';
+    return Math.round(d / 86400) + 'd ago';
+  }
+
+  function updatePremium(c) {
+    if (isNaN(c.dex) || isNaN(c.fv) || c.fv <= 0) {
+      if (c.prem.textContent === '…' && c.fairDone) c.prem.textContent = '—';
+      return;
+    }
+    var p = (c.dex - c.fv) / c.fv * 100;
+    c.p = p;
+    c.prem.className = Math.abs(p) < 0.05 ? '' : (p > 0 ? 'up' : 'down');
+    c.prem.textContent = (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(2) + '%';
+    sortSoon();
+  }
+
+  /* biggest premium or discount first; tokens without a premium go last, by liquidity */
+  var sortTimer = null;
+  function sortSoon() { clearTimeout(sortTimer); sortTimer = setTimeout(sortRows, 150); }
+  function sortRows() {
+    var list = Object.keys(cells).map(function (k) { return cells[k]; });
+    list.sort(function (a, b) {
+      var ha = !isNaN(a.p), hb = !isNaN(b.p);
+      if (ha !== hb) return ha ? -1 : 1;
+      if (ha) return Math.abs(b.p) - Math.abs(a.p);
+      return b.liqV - a.liqV;
+    });
+    list.forEach(function (c) { rows.appendChild(c.tr); });
+  }
+
+  var fairStatus = document.getElementById('fair-status');
+  var fairLoading = false;
+  function loadFair() {
+    if (fairLoading) return;
+    fairLoading = true;
+    if (!feeds) { var cached = recall('paritra_feeds2', 864e5); if (cached && Object.keys(cached).length) { feeds = cached; dirStatus = 'saved'; } }
+    var ready = feeds ? Promise.resolve(feeds) : findFeeds().then(function (f) { if (Object.keys(f).length) { feeds = f; if (dirStatus === 'directory') store('paritra_feeds2', f); } return f; });
+    return ready.then(function (f) {
+      var keys = Object.keys(f);
+      Object.keys(cells).forEach(function (k) {
+        if (!f[k]) { var c = cells[k]; c.fairDone = true; c.fair.innerHTML = '<span class="soon">No feed yet</span>'; if (c.prem.textContent === '…') c.prem.textContent = '—'; }
+      });
+      if (!keys.length) { fairStatus.textContent = 'Fair value: no verified feeds yet (' + dirStatus + ' via ' + rpcUsed + '; ' + (seenDesc || 'no answers') + ').'; return; }
+      return directCalls(keys.map(function (k) { return { to: f[k].addr, data: '0xfeaf968c' }; })).then(function (res) {
+        var shown = 0;
+        keys.forEach(function (k, i) {
+          var c = cells[k], hex = res[i];
+          c.fairDone = true;
+          if (!hex || hex.length < 2 + 64 * 5) { c.fair.textContent = '—'; updatePremium(c); return; }
+          var ans = BigInt('0x' + word(hex, 1)), upd = parseInt(word(hex, 3), 16);
+          if (ans <= 0n) { c.fair.textContent = '—'; return; }
+          c.fv = Number(ans) / Math.pow(10, f[k].dec);
+          c.fair.innerHTML = '';
+          c.fair.appendChild(document.createTextNode(fmtPrice(c.fv)));
+          var ago = document.createElement('span'); ago.className = 'co'; ago.textContent = 'updated ' + timeAgo(upd);
+          c.fair.appendChild(ago);
+          updatePremium(c); shown++;
+        });
+        fairStatus.textContent = 'Fair value: ' + shown + '/' + keys.length + ' Chainlink prices (' + dirStatus + ') via ' + rpcUsed + ' · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      });
+    }).catch(function (e) {
+      rpc = null; try { localStorage.removeItem('paritra_rpc'); } catch (x) {}
+      RPCS.push(RPCS.shift()); /* try the next endpoint first next time */
+      fairStatus.textContent = 'Fair value unavailable right now (' + (e && e.message ? e.message : 'network') + ').';
+      Object.keys(cells).forEach(function (k) { var c = cells[k]; c.fairDone = true; if (c.fair.textContent === '…') c.fair.textContent = '—'; if (c.prem.textContent === '…') c.prem.textContent = '—'; });
+    }).then(function () { fairLoading = false; });
+  }
+
+  function loadAll() { load(); loadFair(); }
+  loadAll();
+  setInterval(function () { if (!document.hidden) loadAll(); }, 60000);
+  document.getElementById('board-refresh').addEventListener('click', loadAll);
+
+})();
+</script>
+</body>
+</html>
