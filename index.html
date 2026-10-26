@@ -243,6 +243,18 @@ footer{border-top:1px solid var(--line)}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}summary::after{transition:none}}
 [hidden]{display:none!important}
 .links a.active{color:var(--text)}
+.btn-buy{border:1px solid rgba(245,165,36,.6);color:var(--amber);font-weight:600}
+.btn-buy:hover{background:var(--amber);color:var(--bg)}
+.tl{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:18px}
+.tl-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px}
+.tl-top small,.tl-grid small{font-size:13px;color:var(--faint)}
+.tl-price{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.tl-price b{font-family:var(--mono);font-weight:500;font-size:34px}
+.tl-btns{display:flex;flex-wrap:wrap;gap:10px}
+.tl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:700px){.tl-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tl-price b{font-size:28px}}
+.tl-grid div{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tl-grid b{font-family:var(--mono);font-weight:500;font-size:18px}
 .page-top{padding-top:56px}
 @media (max-width:700px){.page-top{padding-top:36px}}
 </style>
@@ -262,6 +274,7 @@ footer{border-top:1px solid var(--line)}
       <a href="board">Parity board</a>
       <a href="tokens">Verified</a>
       <a href="docs">Docs</a>
+      <a class="btn btn-buy" data-buy href="#" target="_blank" rel="noopener" style="min-height:44px;padding:10px 18px">Buy $PARITRA</a>
       <a class="btn btn-primary" href="board" style="min-height:44px;padding:10px 18px">Launch app</a>
     </nav>
   </div>
@@ -358,7 +371,23 @@ footer{border-top:1px solid var(--line)}
     <div class="sec-head">
       <span class="kicker">Token</span>
       <h2 id="token-title">The Paritra token</h2>
-      <p>Full details are published here at launch. Always check the contract address on this page before you buy.</p>
+      <p>Live on Pons, Robinhood Chain. Always check the contract address on this page before you buy.</p>
+    </div>
+    <div class="tl" id="tok-live">
+      <div class="tl-top">
+        <div><small id="tl-label">$PARITRA price</small><div class="tl-price"><b id="tl-price">…</b><span id="tl-chg" class="mono"></span></div></div>
+        <div class="tl-btns">
+          <a class="btn btn-primary" data-buy="card" href="#" target="_blank" rel="noopener">Buy on Pons</a>
+          <a class="btn btn-ghost" id="tl-chart" href="#" target="_blank" rel="noopener">Chart</a>
+        </div>
+      </div>
+      <div class="tl-grid">
+        <div><small>Market cap</small><b id="tl-mc">…</b></div>
+        <div><small>Liquidity</small><b id="tl-liq">…</b></div>
+        <div><small>Volume 24h</small><b id="tl-vol">…</b></div>
+        <div><small>Updated</small><b id="tl-time">…</b></div>
+      </div>
+      <p class="note" id="tl-note" style="margin:0">Live data via DexScreener. Refreshed every minute.</p>
     </div>
     <div class="token-grid">
       <div class="stat"><small>Ticker</small><b id="t-ticker">TBA</b></div>
@@ -404,7 +433,7 @@ footer{border-top:1px solid var(--line)}
       <a data-link="tg" href="#" aria-label="Paritra on Telegram"><i class="fa-brands fa-telegram" aria-hidden="true"></i></a>
       <a data-link="gh" href="#" aria-label="Paritra on GitHub"><i class="fa-brands fa-github" aria-hidden="true"></i></a>
     </div>
-    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 3.2</p>
+    <p class="legal">© 2026 Paritra. Not affiliated with Robinhood Markets, Inc. Data, not financial advice. · Build 3.3</p>
   </div>
 </footer>
 
@@ -452,6 +481,14 @@ footer{border-top:1px solid var(--line)}
     btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
   });
   nav.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { nav.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }); });
+  /* buy / chart buttons */
+  var BUY_URL = C.BUY_URL || '', CHART_URL = CA ? 'https://dexscreener.com/robinhood/' + CA : '';
+  document.querySelectorAll('[data-buy]').forEach(function (a) {
+    var url = BUY_URL || CHART_URL;
+    if (!url || (!BUY_URL && a.getAttribute('data-buy') === 'card')) { a.style.display = 'none'; return; }
+    a.href = url;
+    if (!BUY_URL) a.textContent = 'Chart';
+  });
 })();
 (function () {
   /* explainer chart: sample data, 48 hours */
@@ -537,6 +574,83 @@ footer{border-top:1px solid var(--line)}
     if (e.key === 'ArrowRight') { show(cur + 1); e.preventDefault(); }
   });
 })();
+(function () {
+  var C = window.PARITRA || {}, CA = C.CA || '';
+  var box = document.getElementById('tok-live');
+  if (!CA || !box) { if (box) box.hidden = true; return; }
+  var $ = function (i) { return document.getElementById(i); };
+  $('tl-chart').href = 'https://dexscreener.com/robinhood/' + CA;
+  function money(v) {
+    if (v == null || isNaN(v)) return '—';
+    if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+    if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+    return '$' + v.toFixed(0);
+  }
+  function price(v) {
+    if (!(v > 0)) return '—';
+    if (v >= 1) return '$' + v.toFixed(4);
+    return '$' + Number(v.toPrecision(4)).toFixed(12).replace(/0+$/, '');
+  }
+  function show(d) {
+    $('tl-price').textContent = price(d.price);
+    var c = $('tl-chg');
+    if (isNaN(d.chg)) c.textContent = ''; else { c.textContent = (d.chg >= 0 ? '+' : '−') + Math.abs(d.chg).toFixed(2) + '% 24h'; c.className = 'mono ' + (d.chg >= 0 ? 'up' : 'down'); }
+    $('tl-mc').textContent = money(d.mc); $('tl-liq').textContent = money(d.liq); $('tl-vol').textContent = money(d.vol);
+    $('tl-time').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (d.symbol) {
+      $('tl-label').textContent = '$' + d.symbol + ' price';
+      var t = $('t-ticker'); if (t && t.textContent === 'TBA') t.textContent = '$' + d.symbol;
+    }
+    if (d.url) $('tl-chart').href = d.url;
+    $('tl-note').textContent = 'Live data via ' + d.src + '. Refreshed every minute.';
+  }
+  function fromDex(pairs) {
+    pairs = (pairs || []).filter(function (p) { return p && p.baseToken && String(p.baseToken.address).toLowerCase() === CA.toLowerCase(); });
+    if (!pairs.length) throw new Error('no pair');
+    pairs.sort(function (a, b) { return ((b.liquidity || {}).usd || 0) - ((a.liquidity || {}).usd || 0); });
+    var p = pairs[0];
+    return { price: parseFloat(p.priceUsd), chg: parseFloat((p.priceChange || {}).h24), mc: p.marketCap || p.fdv, liq: (p.liquidity || {}).usd, vol: (p.volume || {}).h24, symbol: p.baseToken.symbol, url: p.url, src: 'DexScreener' };
+  }
+  function load() {
+    fetch('https://api.dexscreener.com/tokens/v1/robinhood/' + CA)
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (j) { return fromDex(Array.isArray(j) ? j : j.pairs); })
+      .catch(function () {
+        return fetch('https://api.dexscreener.com/latest/dex/tokens/' + CA).then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (j) { return fromDex(j.pairs); });
+      })
+      .catch(function () {
+        return fetch('https://api.geckoterminal.com/api/v2/networks/robinhood/tokens/' + CA, { headers: { accept: 'application/json' } })
+          .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+          .then(function (j) { var a = j.data.attributes; return { price: parseFloat(a.price_usd), chg: NaN, mc: parseFloat(a.market_cap_usd) || parseFloat(a.fdv_usd), liq: parseFloat(a.total_reserve_in_usd), vol: parseFloat((a.volume_usd || {}).h24), symbol: a.symbol, src: 'GeckoTerminal' }; });
+      })
+      .then(show)
+      .catch(function () {
+        $('tl-note').textContent = 'Live data shows up here once trackers index the token. Use the Chart button meanwhile.';
+        ['tl-price', 'tl-mc', 'tl-liq', 'tl-vol', 'tl-time'].forEach(function (i) { if ($(i).textContent === '…') $(i).textContent = '—'; });
+      });
+  }
+  /* total supply straight from the token contract; tax tile hidden until set */
+  if (!C.TAX) { var tx = $('t-tax'); if (tx && tx.parentNode) tx.parentNode.style.display = 'none'; }
+  if (!C.TOTAL_SUPPLY && $('t-supply')) {
+    var RPCS = ['https://rpc.nodeflare.app/robinhood/public', 'https://rpc.mainnet.chain.robinhood.com'];
+    var callRpc = function (url, data) {
+      return fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CA, data: data }, 'latest'] }) })
+        .then(function (r) { return r.json(); }).then(function (j) { if (!j.result || j.result === '0x') throw 0; return j.result; });
+    };
+    var trySupply = function (i) {
+      if (i >= RPCS.length) return;
+      callRpc(RPCS[i], '0x18160ddd').then(function (s) {
+        return new Promise(function (ok) { setTimeout(ok, 700); }).then(function () { return callRpc(RPCS[i], '0x313ce567'); }).then(function (d) {
+          var dec = parseInt(d, 16) || 18, whole = BigInt(s) / (10n ** BigInt(dec));
+          $('t-supply').textContent = whole.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        });
+      }).catch(function () { trySupply(i + 1); });
+    };
+    trySupply(0);
+  }
+  load(); setInterval(function () { if (!document.hidden) load(); }, 60000);
+})();
+
 </script>
 </body>
 </html>
